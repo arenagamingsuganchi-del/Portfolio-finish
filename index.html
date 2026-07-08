@@ -678,10 +678,16 @@
                     document.getElementById('statSatisfaction').dataset.suffix = data.stats.satisfaction.replace(/[0-9]/g, '');
                 }
                 
-                // Intro line yangilash
-                document.getElementById('introLine').textContent = data.hero.name.split(' ')[0].toUpperCase();
-                document.getElementById('watermark').textContent = data.hero.name.split(' ')[0].toUpperCase();
-            }).catch(console.error);
+                // Update watermark
+                if (document.getElementById('watermark')) {
+                    document.getElementById('watermark').textContent = data.hero.name.split(' ')[0].toUpperCase();
+                }
+            })
+            .catch(console.error)
+            .finally(() => {
+                // Hisoblagich animatsiyasini ishga tushirish
+                initCounter();
+            });
 
         // === 3. SCROLL REVEAL ===
         const revealObserver = new IntersectionObserver((entries) => {
@@ -696,33 +702,35 @@
 
         // === 4. COUNTER ANIMATION ===
         let counterStarted = false;
-        const counterObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting && !counterStarted) {
-                    counterStarted = true;
-                    document.querySelectorAll('.stat-number').forEach(counter => {
-                        const target = parseInt(counter.dataset.target) || 0;
-                        const suffix = counter.dataset.suffix || '';
-                        const duration = 2000;
-                        const start = performance.now();
+        function initCounter() {
+            const counterObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && !counterStarted) {
+                        counterStarted = true;
+                        document.querySelectorAll('.stat-number').forEach(counter => {
+                            const target = parseInt(counter.dataset.target) || 0;
+                            const suffix = counter.dataset.suffix || '';
+                            const duration = 2000;
+                            const start = performance.now();
 
-                        function updateCounter(now) {
-                            const elapsed = now - start;
-                            const progress = Math.min(elapsed / duration, 1);
-                            // Easing: ease-out cubic
-                            const eased = 1 - Math.pow(1 - progress, 3);
-                            const current = Math.floor(eased * target);
-                            counter.textContent = current + suffix;
-                            if (progress < 1) requestAnimationFrame(updateCounter);
-                        }
-                        requestAnimationFrame(updateCounter);
-                    });
-                }
-            });
-        }, { threshold: 0.5 });
+                            function updateCounter(now) {
+                                const elapsed = now - start;
+                                const progress = Math.min(elapsed / duration, 1);
+                                // Easing: ease-out cubic
+                                const eased = 1 - Math.pow(1 - progress, 3);
+                                const current = Math.floor(eased * target);
+                                counter.textContent = current + suffix;
+                                if (progress < 1) requestAnimationFrame(updateCounter);
+                            }
+                            requestAnimationFrame(updateCounter);
+                        });
+                    }
+                });
+            }, { threshold: 0.5 });
 
-        const statsGrid = document.querySelector('.stats-grid');
-        if (statsGrid) counterObserver.observe(statsGrid);
+            const statsGrid = document.querySelector('.stats-grid');
+            if (statsGrid) counterObserver.observe(statsGrid);
+        }
 
         // === 5. PARTICLES (Neon zarrachalar) ===
         const canvas = document.getElementById('particles-canvas');
