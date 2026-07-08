@@ -17,8 +17,9 @@ export default async function handler(req, res) {
 
   try {
     if (process.env.KV_REST_API_URL) {
+      const { reset } = req.query || {};
       let data = await kv.get('portfolio_data');
-      if (!data) {
+      if (!data || reset === 'true') {
         const localPath = path.join(process.cwd(), 'data.json');
         const fileContent = fs.readFileSync(localPath, 'utf8');
         data = JSON.parse(fileContent);
