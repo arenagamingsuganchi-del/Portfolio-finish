@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Portfolio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dark: #080e1a;
+            --dark2: #0f1829;
+            --gold: #d4a039;
+            --gold-hover: #eab308;
+            --white: #f0ece4;
+            --text: #c8cdd6;
+            --border: rgba(212, 160, 57, 0.3);
+            --radius: 12px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--dark);
+            color: var(--white);
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--dark2);
+            padding: 30px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+        h1 { color: var(--gold); text-align: center; margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: var(--gold); font-weight: 600; }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            background: var(--dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--white);
+            font-family: inherit;
+            font-size: 1rem;
+        }
+        input:focus, textarea:focus { outline: none; border-color: var(--gold-hover); }
+        textarea { resize: vertical; min-height: 100px; }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: var(--gold);
+            color: var(--dark);
+            border: none;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 20px;
+        }
+        button:hover { background: var(--gold-hover); }
+        .section-title { font-size: 1.5rem; margin: 30px 0 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        #status { text-align: center; margin-top: 20px; font-weight: bold; }
+        .success { color: #22c55e; }
+        .error { color: #ef4444; }
+        
+        #loginOverlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .login-box {
+            background: var(--dark2);
+            padding: 40px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+        .login-box input { margin-bottom: 20px; text-align: center; letter-spacing: 5px; }
+    </style>
+</head>
+<body>
+    <!-- LOGIN OVERLAY -->
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h1>Admin Kirish</h1>
+            <input type="password" id="adminPassword" placeholder="Parol..." required>
+            <label style="color: var(--white); font-weight: normal; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 20px;">
+                <input type="checkbox" id="rememberMe" style="width: auto; margin: 0;"> Parolni saqlab qolish
+            </label>
+            <button type="button" onclick="checkPassword()">Kirish</button>
+            <div id="loginError" class="error" style="display:none; margin-top:10px;">Parol xato!</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Boshqaruv Paneli (Admin)</h1>
+        <form id="adminForm">
+            
+            <div class="section-title">Asosiy ma'lumotlar</div>
+            <div class="form-group">
+                <label>Ism / Familiya</label>
+                <input type="text" id="heroName" required>
+            </div>
+            <div class="form-group">
+                <label>Kasbingiz (Subtitle)</label>
+                <input type="text" id="heroSubtitle" required>
+            </div>
+            <div class="form-group">
+                <label>Profil Rasmi manzili (URL/Link)</label>
+                <input type="text" id="heroProfileImg" required>
+            </div>
+            
+            <div class="section-title">Men haqimda</div>
+            <div class="form-group">
+                <label>Batafsil matn</label>
+                <textarea id="aboutText" required></textarea>
+            </div>
+            <div class="section-title">Statistika (Resume)</div>
+            <div class="form-group">
+                <label>Yillik Tajriba (masalan: 5+)</label>
+                <input type="text" id="statExp">
+            </div>
+            <div class="form-group">
+                <label>Mijozlar soni (masalan: 90+)</label>
+                <input type="text" id="statClients">
+            </div>
+            <div class="form-group">
+                <label>Loyihalar soni</label>
+                <input type="text" id="statProjects">
+            </div>
+            <div class="form-group">
+                <label>Mijozlarga Yoqqan Ishlar (masalan: 98%)</label>
+                <input type="text" id="statSatisfaction">
+            </div>
+
+            <div class="section-title">Ijtimoiy Tarmoq va Ssilkalar</div>
+            <div class="form-group">
+                <label>Portfolio ssilkasi</label>
+                <input type="text" id="linkPortfolio">
+            </div>
+            <div class="form-group">
+                <label>Instagram ssilkasi</label>
+                <input type="text" id="linkInstagram">
+            </div>
+            <div class="form-group">
+                <label>Instavlog (YouTube) ssilkasi</label>
+                <input type="text" id="linkYoutube">
+            </div>
+            <div class="form-group">
+                <label>Telegram ssilkasi</label>
+                <input type="text" id="linkTelegram">
+            </div>
+            <div class="form-group">
+                <label>Telefon raqam</label>
+                <input type="text" id="linkPhone">
+            </div>
+
+            <button type="submit">Ma'lumotlarni Saqlash</button>
+            <div id="status"></div>
+        </form>
+    </div>
+
+    <script>
+        // Avval saqlangan parolni tekshirish
+        if (localStorage.getItem('admin_auth') === 'qaxxarov.98') {
+            document.getElementById('loginOverlay').style.display = 'none';
+        }
+
+        // Enter bosilganda ham kirish
+        document.getElementById('adminPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') checkPassword();
+        });
+
+        // Parolni tekshirish va saqlash
+        function checkPassword() {
+            const pwd = document.getElementById('adminPassword').value;
+            if (pwd === 'qaxxarov.98') {
+                document.getElementById('loginOverlay').style.display = 'none';
+                
+                // Agar pichka qo'yilgan bo'lsa, parolni brauzer xotirasiga saqlash
+                if (document.getElementById('rememberMe').checked) {
+                    localStorage.setItem('admin_auth', 'qaxxarov.98');
+                }
+            } else {
+                document.getElementById('loginError').style.display = 'block';
+            }
+        }
+
+        const apiBase = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+
+        // Ma'lumotlarni serverdan yuklash
+        fetch(`${apiBase}/api/data`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('heroName').value = data.hero.name;
+                document.getElementById('heroSubtitle').value = data.hero.subtitle;
+                document.getElementById('heroProfileImg').value = data.hero.profileImg;
+                document.getElementById('aboutText').value = data.about.text;
+                
+                document.getElementById('linkPortfolio').value = data.links.portfolio;
+                document.getElementById('linkInstagram').value = data.links.instagram;
+                document.getElementById('linkYoutube').value = data.links.youtube;
+                document.getElementById('linkTelegram').value = data.links.telegram;
+                document.getElementById('linkPhone').value = data.links.phone;
+                
+                // Stats
+                document.getElementById('statExp').value = data.stats ? data.stats.experience : '';
+                document.getElementById('statClients').value = data.stats ? data.stats.clients : '';
+                document.getElementById('statProjects').value = data.stats ? data.stats.projects : '';
+                document.getElementById('statSatisfaction').value = data.stats ? data.stats.satisfaction : '';
+            });
+
+        // Formani yuborish
+        document.getElementById('adminForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = 'Saqlanmoqda...';
+            statusDiv.className = '';
+
+            const updatedData = {
+                hero: {
+                    name: document.getElementById('heroName').value,
+                    subtitle: document.getElementById('heroSubtitle').value,
+                    profileImg: document.getElementById('heroProfileImg').value
+                },
+                about: {
+                    text: document.getElementById('aboutText').value
+                },
+                links: {
+                    portfolio: document.getElementById('linkPortfolio').value,
+                    instagram: document.getElementById('linkInstagram').value,
+                    youtube: document.getElementById('linkYoutube').value,
+                    telegram: document.getElementById('linkTelegram').value,
+                    phone: document.getElementById('linkPhone').value
+                },
+                stats: {
+                    experience: document.getElementById('statExp').value,
+                    clients: document.getElementById('statClients').value,
+                    projects: document.getElementById('statProjects').value,
+                    satisfaction: document.getElementById('statSatisfaction').value
+                }
+            };
+
+            fetch(`${apiBase}/api/update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedData, null, 2)
+            })
+            .then(res => res.json())
+            .then(resData => {
+                if(resData.success) {
+                    statusDiv.textContent = 'Muvaffaqiyatli saqlandi! Asosiy saytni yangilab ko`ring.';
+                    statusDiv.className = 'success';
+                } else {
+                    statusDiv.textContent = 'Xatolik: ' + resData.error;
+                    statusDiv.className = 'error';
+                }
+            })
+            .catch(err => {
+                statusDiv.textContent = 'Tarmoq xatosi!';
+                statusDiv.className = 'error';
+            });
+        });
+    </script>
+</body>
+</html>
