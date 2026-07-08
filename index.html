@@ -593,13 +593,13 @@
         <!-- HERO -->
         <section class="hero-section">
             <canvas id="particles-canvas"></canvas>
-            <div class="profile-container reveal">
+            <div class="profile-container">
                 <div class="profile-glow"></div>
                 <div id="profileSkeleton" class="skeleton"></div>
                 <img src="" alt="Profile" class="profile-img hover-target" id="displayProfileImg" style="opacity: 0; transition: opacity 0.5s; position: relative; z-index: 3;">
             </div>
-            <h1 id="displayName" class="reveal" style="transition-delay: 0.15s"><span class="skeleton" style="width: 250px; height: 3.5rem;"></span></h1>
-            <div class="subtitle reveal" id="displaySubtitle" style="transition-delay: 0.3s"><span class="skeleton" style="width: 180px; height: 1.2rem;"></span></div>
+            <h1 id="displayName"><span class="skeleton" style="width: 250px; height: 3.5rem;"></span></h1>
+            <div class="subtitle" id="displaySubtitle"><span class="skeleton" style="width: 180px; height: 1.2rem;"></span></div>
 
             <!-- STATS -->
             <div class="stats-grid reveal" style="transition-delay: 0.45s">
@@ -624,7 +624,7 @@
 
         <!-- ABOUT -->
         <section id="about">
-            <div class="about-card hover-target reveal" id="displayAbout">
+            <div class="about-card hover-target" id="displayAbout">
                 <span class="skeleton" style="width: 95%; height: 1rem; margin-bottom: 12px; display: block;"></span>
                 <span class="skeleton" style="width: 90%; height: 1rem; margin-bottom: 12px; display: block;"></span>
                 <span class="skeleton" style="width: 75%; height: 1rem; display: block;"></span>
@@ -695,44 +695,69 @@
         fetch(`${apiBase}/api/data`)
             .then(res => res.json())
             .then(data => {
-                document.getElementById('displayName').textContent = data.hero.name;
-                document.getElementById('displaySubtitle').textContent = data.hero.subtitle;
+                if (data.hero) {
+                    if (data.hero.name) document.getElementById('displayName').textContent = data.hero.name;
+                    if (data.hero.subtitle) document.getElementById('displaySubtitle').textContent = data.hero.subtitle;
+                    
+                    if (data.hero.profileImg) {
+                        const img = document.getElementById('displayProfileImg');
+                        img.src = data.hero.profileImg;
+                        img.onload = () => {
+                            img.style.opacity = 1;
+                            const sk = document.getElementById('profileSkeleton');
+                            if (sk) sk.style.display = 'none';
+                        };
+                        // Fallback agar yuklanish onload eshitilmay qolsa (masalan keshlangan bo'lsa)
+                        if (img.complete) {
+                            img.style.opacity = 1;
+                            const sk = document.getElementById('profileSkeleton');
+                            if (sk) sk.style.display = 'none';
+                        }
+                    }
+                }
                 
-                const img = document.getElementById('displayProfileImg');
-                img.src = data.hero.profileImg;
-                img.onload = () => {
-                    img.style.opacity = 1;
-                    const sk = document.getElementById('profileSkeleton');
-                    if (sk) sk.style.display = 'none';
-                };
+                if (data.about && data.about.text) {
+                    document.getElementById('displayAbout').textContent = data.about.text;
+                }
                 
-                document.getElementById('displayAbout').textContent = data.about.text;
-                
-                document.getElementById('displayPortfolio').href = data.links.portfolio;
-                document.getElementById('displayInstagram').href = data.links.instagram;
-                document.getElementById('displayYoutube').href = data.links.youtube;
-                document.getElementById('displayTelegram').href = data.links.telegram;
-                document.getElementById('navTelegram').href = data.links.telegram;
-                document.getElementById('displayPhone').href = 'tel:' + data.links.phone;
+                if (data.links) {
+                    if (data.links.portfolio) document.getElementById('displayPortfolio').href = data.links.portfolio;
+                    if (data.links.instagram) document.getElementById('displayInstagram').href = data.links.instagram;
+                    if (data.links.youtube) document.getElementById('displayYoutube').href = data.links.youtube;
+                    if (data.links.telegram) {
+                        document.getElementById('displayTelegram').href = data.links.telegram;
+                        document.getElementById('navTelegram').href = data.links.telegram;
+                    }
+                    if (data.links.phone) document.getElementById('displayPhone').href = 'tel:' + data.links.phone;
+                }
                 
                 // Stats data-target yangilash
                 if (data.stats) {
-                    const exp = data.stats.experience.replace(/[^0-9]/g, '');
-                    const cli = data.stats.clients.replace(/[^0-9]/g, '');
-                    const prj = data.stats.projects.replace(/[^0-9]/g, '');
-                    const sat = data.stats.satisfaction.replace(/[^0-9]/g, '');
-                    document.getElementById('statExp').dataset.target = exp;
-                    document.getElementById('statExp').dataset.suffix = data.stats.experience.replace(/[0-9]/g, '');
-                    document.getElementById('statClients').dataset.target = cli;
-                    document.getElementById('statClients').dataset.suffix = data.stats.clients.replace(/[0-9]/g, '');
-                    document.getElementById('statProjects').dataset.target = prj;
-                    document.getElementById('statProjects').dataset.suffix = data.stats.projects.replace(/[0-9]/g, '');
-                    document.getElementById('statSatisfaction').dataset.target = sat;
-                    document.getElementById('statSatisfaction').dataset.suffix = data.stats.satisfaction.replace(/[0-9]/g, '');
+                    const exp = (data.stats.experience || '').replace(/[^0-9]/g, '');
+                    const cli = (data.stats.clients || '').replace(/[^0-9]/g, '');
+                    const prj = (data.stats.projects || '').replace(/[^0-9]/g, '');
+                    const sat = (data.stats.satisfaction || '').replace(/[^0-9]/g, '');
+                    
+                    if (document.getElementById('statExp')) {
+                        document.getElementById('statExp').dataset.target = exp;
+                        document.getElementById('statExp').dataset.suffix = (data.stats.experience || '').replace(/[0-9]/g, '');
+                    }
+                    if (document.getElementById('statClients')) {
+                        document.getElementById('statClients').dataset.target = cli;
+                        document.getElementById('statClients').dataset.suffix = (data.stats.clients || '').replace(/[0-9]/g, '');
+                    }
+                    if (document.getElementById('statProjects')) {
+                        document.getElementById('statProjects').dataset.target = prj;
+                        document.getElementById('statProjects').dataset.suffix = (data.stats.projects || '').replace(/[0-9]/g, '');
+                    }
+                    if (document.getElementById('statSatisfaction')) {
+                        document.getElementById('statSatisfaction').dataset.target = sat;
+                        document.getElementById('statSatisfaction').dataset.suffix = (data.stats.satisfaction || '').replace(/[0-9]/g, '');
+                    }
                 }
                 
                 // Update watermark
-                if (document.getElementById('watermark')) {
+                if (document.getElementById('watermark') && data.hero && data.hero.name) {
                     document.getElementById('watermark').textContent = data.hero.name.split(' ')[0].toUpperCase();
                 }
             })
@@ -762,6 +787,13 @@
         }, { threshold: 0.15 });
 
         document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+        // Telegram yoki ba'zi in-app brauzerlar uchun reveal observer ishlamay qolsa fallback
+        setTimeout(() => {
+            document.querySelectorAll('.reveal:not(.visible)').forEach(el => {
+                el.classList.add('visible');
+            });
+        }, 1200);
 
         // === 4. COUNTER ANIMATION ===
         let counterStarted = false;
