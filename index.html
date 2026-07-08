@@ -488,16 +488,36 @@
         }
 
         @media (max-width: 768px) {
-            h1 { font-size: 2.5rem; }
-            .subtitle { font-size: 0.9rem; letter-spacing: 4px; }
-            .profile-img { width: 160px; height: 160px; }
-            .links-grid { grid-template-columns: 1fr; }
-            .link-card.portfolio-card { grid-column: span 1; }
-            .watermark { font-size: 20vw; }
+            h1 { font-size: 2.2rem; }
+            .subtitle { font-size: 0.85rem; letter-spacing: 4px; }
+            .profile-img { width: 150px; height: 160px; }
+            
+            /* Spacings */
+            section { padding: 60px 15px; }
+            .hero-section { padding-top: 100px; min-height: auto; }
+            
+            /* About Card Mobile */
+            .about-card { padding: 25px 20px; font-size: 1rem; }
+            
+            /* Links Bento Grid on Mobile */
+            .links-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .link-card { padding: 20px 10px; font-size: 1rem; gap: 8px; }
+            .link-card i { font-size: 1.8rem; }
+            .link-card.portfolio-card { grid-column: span 2; padding: 25px 15px; font-size: 1.2rem; }
+            .link-card.portfolio-card i { font-size: 2.2rem; }
+            
+            .watermark { font-size: 24vw; }
             
             /* Disable custom cursor on mobile */
             .cursor-dot, .cursor-outline { display: none; }
             * { cursor: auto !important; }
+        }
+
+        @media (max-width: 480px) {
+            .navbar { padding: 12px 15px; }
+            .nav-brand { font-size: 1.1rem; }
+            .nav-actions .btn span { display: none; }
+            .btn { padding: 8px 12px; font-size: 0.85rem; }
         }
     </style>
 </head>
@@ -522,8 +542,8 @@
             <span>Qaxxarov<span class="highlight">Portfolio</span></span>
         </div>
         <div class="nav-actions">
-            <a href="#" target="_blank" class="btn btn-primary hover-target" id="navTelegram"><i class="fa-brands fa-telegram"></i> Telegram</a>
-            <a href="admin.html" class="btn btn-outline hover-target"><i class="fa-solid fa-lock"></i> Admin</a>
+            <a href="#" target="_blank" class="btn btn-primary hover-target" id="navTelegram"><i class="fa-brands fa-telegram"></i> <span>Telegram</span></a>
+            <a href="admin.html" class="btn btn-outline hover-target"><i class="fa-solid fa-lock"></i> <span>Admin</span></a>
         </div>
     </nav>
 
