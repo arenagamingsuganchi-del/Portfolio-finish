@@ -4,6 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Qaxxarov - Cinematic Creator</title>
+    <meta name="description" content="Tursunmurod Qaxxorov — Grafik dizayner va AI Creator portfolio sayti. Kreativ foto, video va dizayn xizmatlari.">
+    <meta name="keywords" content="Qaxxorov, portfolio, grafik dizayn, AI creator, video editor, dizayner">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Qaxxarov - Cinematic Creator">
+    <meta property="og:description" content="Grafik dizayner va AI Creator portfolio sayti. Kreativ foto, video va dizayn xizmatlari.">
+    <meta property="og:image" content="/profile.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="Qaxxarov - Cinematic Creator">
+    <meta property="twitter:description" content="Grafik dizayner va AI Creator portfolio sayti.">
+    <meta property="twitter:image" content="/profile.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/profile.png">
+    
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -211,6 +229,7 @@
             text-align: center;
             font-size: 1.2rem;
             line-height: 1.8;
+            white-space: pre-line;
             color: var(--text-main);
             box-shadow: 0 20px 40px rgba(0,0,0,0.5);
             position: relative;
@@ -490,7 +509,7 @@
         @media (max-width: 768px) {
             h1 { font-size: 2.2rem; }
             .subtitle { font-size: 0.85rem; letter-spacing: 4px; }
-            .profile-img { width: 150px; height: 160px; }
+            .profile-img { width: 150px; height: 150px; }
             
             /* Spacings */
             section { padding: 60px 15px; }
@@ -513,11 +532,27 @@
             * { cursor: auto !important; }
         }
 
-        @media (max-width: 480px) {
-            .navbar { padding: 12px 15px; }
-            .nav-brand { font-size: 1.1rem; }
-            .nav-actions .btn span { display: none; }
-            .btn { padding: 8px 12px; font-size: 0.85rem; }
+        /* === SKELETON LOADER === */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(20, 5, 40, 0.4) 25%, rgba(0, 243, 255, 0.15) 50%, rgba(20, 5, 40, 0.4) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 8px;
+            display: inline-block;
+        }
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        #profileSkeleton {
+            width: 220px; height: 220px;
+            border-radius: 50%;
+            position: absolute;
+            top: 0; left: 0;
+            z-index: 2;
+        }
+        @media (max-width: 768px) {
+            #profileSkeleton { width: 150px; height: 150px; }
         }
     </style>
 </head>
@@ -553,10 +588,11 @@
             <canvas id="particles-canvas"></canvas>
             <div class="profile-container reveal">
                 <div class="profile-glow"></div>
-                <img src="" alt="Profile" class="profile-img hover-target" id="displayProfileImg">
+                <div id="profileSkeleton" class="skeleton"></div>
+                <img src="" alt="Profile" class="profile-img hover-target" id="displayProfileImg" style="opacity: 0; transition: opacity 0.5s; position: relative; z-index: 3;">
             </div>
-            <h1 id="displayName" class="reveal" style="transition-delay: 0.15s">Yuklanmoqda...</h1>
-            <div class="subtitle reveal" id="displaySubtitle" style="transition-delay: 0.3s">...</div>
+            <h1 id="displayName" class="reveal" style="transition-delay: 0.15s"><span class="skeleton" style="width: 250px; height: 3.5rem;"></span></h1>
+            <div class="subtitle reveal" id="displaySubtitle" style="transition-delay: 0.3s"><span class="skeleton" style="width: 180px; height: 1.2rem;"></span></div>
 
             <!-- STATS -->
             <div class="stats-grid reveal" style="transition-delay: 0.45s">
@@ -582,7 +618,9 @@
         <!-- ABOUT -->
         <section id="about">
             <div class="about-card hover-target reveal" id="displayAbout">
-                ...
+                <span class="skeleton" style="width: 95%; height: 1rem; margin-bottom: 12px; display: block;"></span>
+                <span class="skeleton" style="width: 90%; height: 1rem; margin-bottom: 12px; display: block;"></span>
+                <span class="skeleton" style="width: 75%; height: 1rem; display: block;"></span>
             </div>
         </section>
 
@@ -652,7 +690,15 @@
             .then(data => {
                 document.getElementById('displayName').textContent = data.hero.name;
                 document.getElementById('displaySubtitle').textContent = data.hero.subtitle;
-                document.getElementById('displayProfileImg').src = data.hero.profileImg;
+                
+                const img = document.getElementById('displayProfileImg');
+                img.src = data.hero.profileImg;
+                img.onload = () => {
+                    img.style.opacity = 1;
+                    const sk = document.getElementById('profileSkeleton');
+                    if (sk) sk.style.display = 'none';
+                };
+                
                 document.getElementById('displayAbout').textContent = data.about.text;
                 
                 document.getElementById('displayPortfolio').href = data.links.portfolio;
@@ -683,7 +729,17 @@
                     document.getElementById('watermark').textContent = data.hero.name.split(' ')[0].toUpperCase();
                 }
             })
-            .catch(console.error)
+            .catch(err => {
+                console.error(err);
+                document.getElementById('displayName').textContent = 'Qaxxarov';
+                document.getElementById('displaySubtitle').textContent = 'Dizayner & AI Creator';
+                document.getElementById('displayAbout').textContent = 'Kreativ portfolio sayt. Ma\'lumotlarni yuklashda xatolik yuz berdi. Iltimos sahifani yangilang.';
+                const sk = document.getElementById('profileSkeleton');
+                if (sk) sk.style.display = 'none';
+                const img = document.getElementById('displayProfileImg');
+                img.style.opacity = 1;
+                img.src = 'profile.png';
+            })
             .finally(() => {
                 // Hisoblagich animatsiyasini ishga tushirish
                 initCounter();
@@ -766,11 +822,16 @@
                 }
             }
             draw() {
+                // Soft glow circle (overlapping arcs, faster than shadowBlur)
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${this.color}, ${this.opacity * 0.25})`;
+                ctx.fill();
+
+                // Core particle
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fillStyle = `rgba(${this.color}, ${this.opacity})`;
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = `rgba(${this.color}, 0.8)`;
                 ctx.fill();
             }
         }
@@ -811,39 +872,44 @@
         const cursorDot = document.getElementById('cursor-dot');
         const cursorOutline = document.getElementById('cursor-outline');
         
-        let mouseX = window.innerWidth / 2;
-        let mouseY = window.innerHeight / 2;
-        let outlineX = mouseX;
-        let outlineY = mouseY;
+        if (window.matchMedia('(hover: hover)').matches && cursorDot && cursorOutline) {
+            let mouseX = window.innerWidth / 2;
+            let mouseY = window.innerHeight / 2;
+            let outlineX = mouseX;
+            let outlineY = mouseY;
 
-        window.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-            cursorDot.style.left = mouseX + 'px';
-            cursorDot.style.top = mouseY + 'px';
-        });
+            window.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                cursorDot.style.left = mouseX + 'px';
+                cursorDot.style.top = mouseY + 'px';
+            });
 
-        function animateCursor() {
-            outlineX += (mouseX - outlineX) * 0.15;
-            outlineY += (mouseY - outlineY) * 0.15;
-            cursorOutline.style.left = outlineX + 'px';
-            cursorOutline.style.top = outlineY + 'px';
-            requestAnimationFrame(animateCursor);
+            function animateCursor() {
+                outlineX += (mouseX - outlineX) * 0.15;
+                outlineY += (mouseY - outlineY) * 0.15;
+                cursorOutline.style.left = outlineX + 'px';
+                cursorOutline.style.top = outlineY + 'px';
+                requestAnimationFrame(animateCursor);
+            }
+            animateCursor();
+
+            document.querySelectorAll('.hover-target').forEach(el => {
+                el.addEventListener('mouseenter', () => {
+                    cursorOutline.style.width = '70px';
+                    cursorOutline.style.height = '70px';
+                    cursorOutline.style.backgroundColor = 'rgba(0, 243, 255, 0.1)';
+                });
+                el.addEventListener('mouseleave', () => {
+                    cursorOutline.style.width = '40px';
+                    cursorOutline.style.height = '40px';
+                    cursorOutline.style.backgroundColor = 'transparent';
+                });
+            });
+        } else {
+            if (cursorDot) cursorDot.style.display = 'none';
+            if (cursorOutline) cursorOutline.style.display = 'none';
         }
-        animateCursor();
-
-        document.querySelectorAll('.hover-target').forEach(el => {
-            el.addEventListener('mouseenter', () => {
-                cursorOutline.style.width = '70px';
-                cursorOutline.style.height = '70px';
-                cursorOutline.style.backgroundColor = 'rgba(0, 243, 255, 0.1)';
-            });
-            el.addEventListener('mouseleave', () => {
-                cursorOutline.style.width = '40px';
-                cursorOutline.style.height = '40px';
-                cursorOutline.style.backgroundColor = 'transparent';
-            });
-        });
 
         // === 8. PARALLAX WATERMARK ===
         const watermark = document.getElementById('watermark');

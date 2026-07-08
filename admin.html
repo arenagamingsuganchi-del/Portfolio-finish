@@ -101,7 +101,10 @@
     </div>
 
     <div class="container">
-        <h1>Boshqaruv Paneli (Admin)</h1>
+        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
+            <h1 style="margin: 0; font-size: 1.8rem; text-align: left; color: var(--gold);">Boshqaruv Paneli</h1>
+            <button type="button" onclick="logout()" style="width: auto; margin-top: 0; padding: 8px 16px; font-size: 0.95rem; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #ef4444; border-radius: 6px;">Chiqish</button>
+        </header>
         <form id="adminForm">
             
             <div class="section-title">Asosiy ma'lumotlar</div>
@@ -116,6 +119,10 @@
             <div class="form-group">
                 <label>Profil Rasmi manzili (URL/Link)</label>
                 <input type="text" id="heroProfileImg" required>
+                <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                    <img id="avatarPreview" src="" alt="Avatar Ko'rinishi" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); display: none;">
+                    <span id="previewFallback" style="font-size: 0.85rem; color: var(--text);">Rasm tanlanmagan</span>
+                </div>
             </div>
             
             <div class="section-title">Men haqimda</div>
@@ -148,19 +155,19 @@
             </div>
             <div class="form-group">
                 <label>Instagram ssilkasi</label>
-                <input type="text" id="linkInstagram">
+                <input type="url" id="linkInstagram" placeholder="https://instagram.com/username">
             </div>
             <div class="form-group">
                 <label>Instavlog (YouTube) ssilkasi</label>
-                <input type="text" id="linkYoutube">
+                <input type="url" id="linkYoutube" placeholder="https://youtube.com/channel">
             </div>
             <div class="form-group">
                 <label>Telegram ssilkasi</label>
-                <input type="text" id="linkTelegram">
+                <input type="url" id="linkTelegram" placeholder="https://t.me/username">
             </div>
             <div class="form-group">
                 <label>Telefon raqam</label>
-                <input type="text" id="linkPhone">
+                <input type="text" id="linkPhone" placeholder="+998901234567">
             </div>
 
             <button type="submit">Ma'lumotlarni Saqlash</button>
@@ -169,9 +176,48 @@
     </div>
 
     <script>
+        const apiBase = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+
+        // Profil rasmi old ko'rinishi (preview)
+        const profileInput = document.getElementById('heroProfileImg');
+        const avatarPreview = document.getElementById('avatarPreview');
+        const previewFallback = document.getElementById('previewFallback');
+
+        function updateAvatarPreview() {
+            const val = profileInput.value.trim();
+            if (val) {
+                const srcUrl = val.startsWith('http') || val.startsWith('/') ? val : '/' + val;
+                avatarPreview.src = srcUrl;
+                avatarPreview.style.display = 'block';
+                previewFallback.style.display = 'none';
+            } else {
+                avatarPreview.src = '';
+                avatarPreview.style.display = 'none';
+                previewFallback.style.display = 'block';
+            }
+        }
+
+        profileInput.addEventListener('input', updateAvatarPreview);
+
+        // Chiqish
+        function logout() {
+            localStorage.removeItem('admin_auth');
+            sessionStorage.removeItem('admin_auth');
+            window.location.reload();
+        }
+
         // Avval saqlangan parolni tekshirish
-        if (localStorage.getItem('admin_auth') === 'qaxxarov.98') {
-            document.getElementById('loginOverlay').style.display = 'none';
+        const savedAuth = localStorage.getItem('admin_auth') || sessionStorage.getItem('admin_auth');
+        if (savedAuth) {
+            verifyPassword(savedAuth).then(isValid => {
+                if (isValid) {
+                    document.getElementById('loginOverlay').style.display = 'none';
+                    loadData();
+                } else {
+                    localStorage.removeItem('admin_auth');
+                    sessionStorage.removeItem('admin_auth');
+                }
+            });
         }
 
         // Enter bosilganda ham kirish
@@ -179,44 +225,65 @@
             if (e.key === 'Enter') checkPassword();
         });
 
+        // Parol tekshirish API chaqiruvi
+        async function verifyPassword(pwd) {
+            try {
+                const res = await fetch(`${apiBase}/api/verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pwd })
+                });
+                return res.ok;
+            } catch (e) {
+                console.error(e);
+                return false;
+            }
+        }
+
         // Parolni tekshirish va saqlash
-        function checkPassword() {
+        async function checkPassword() {
             const pwd = document.getElementById('adminPassword').value;
-            if (pwd === 'qaxxarov.98') {
+            const isValid = await verifyPassword(pwd);
+            if (isValid) {
                 document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('loginError').style.display = 'none';
                 
                 // Agar pichka qo'yilgan bo'lsa, parolni brauzer xotirasiga saqlash
                 if (document.getElementById('rememberMe').checked) {
-                    localStorage.setItem('admin_auth', 'qaxxarov.98');
+                    localStorage.setItem('admin_auth', pwd);
+                } else {
+                    sessionStorage.setItem('admin_auth', pwd);
                 }
+                loadData();
             } else {
                 document.getElementById('loginError').style.display = 'block';
             }
         }
 
-        const apiBase = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
-
         // Ma'lumotlarni serverdan yuklash
-        fetch(`${apiBase}/api/data`)
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('heroName').value = data.hero.name;
-                document.getElementById('heroSubtitle').value = data.hero.subtitle;
-                document.getElementById('heroProfileImg').value = data.hero.profileImg;
-                document.getElementById('aboutText').value = data.about.text;
-                
-                document.getElementById('linkPortfolio').value = data.links.portfolio;
-                document.getElementById('linkInstagram').value = data.links.instagram;
-                document.getElementById('linkYoutube').value = data.links.youtube;
-                document.getElementById('linkTelegram').value = data.links.telegram;
-                document.getElementById('linkPhone').value = data.links.phone;
-                
-                // Stats
-                document.getElementById('statExp').value = data.stats ? data.stats.experience : '';
-                document.getElementById('statClients').value = data.stats ? data.stats.clients : '';
-                document.getElementById('statProjects').value = data.stats ? data.stats.projects : '';
-                document.getElementById('statSatisfaction').value = data.stats ? data.stats.satisfaction : '';
-            });
+        function loadData() {
+            fetch(`${apiBase}/api/data`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('heroName').value = data.hero.name;
+                    document.getElementById('heroSubtitle').value = data.hero.subtitle;
+                    document.getElementById('heroProfileImg').value = data.hero.profileImg;
+                    updateAvatarPreview();
+                    document.getElementById('aboutText').value = data.about.text;
+                    
+                    document.getElementById('linkPortfolio').value = data.links.portfolio;
+                    document.getElementById('linkInstagram').value = data.links.instagram;
+                    document.getElementById('linkYoutube').value = data.links.youtube;
+                    document.getElementById('linkTelegram').value = data.links.telegram;
+                    document.getElementById('linkPhone').value = data.links.phone;
+                    
+                    // Stats
+                    document.getElementById('statExp').value = data.stats ? data.stats.experience : '';
+                    document.getElementById('statClients').value = data.stats ? data.stats.clients : '';
+                    document.getElementById('statProjects').value = data.stats ? data.stats.projects : '';
+                    document.getElementById('statSatisfaction').value = data.stats ? data.stats.satisfaction : '';
+                }).catch(console.error);
+        }
 
         // Formani yuborish
         document.getElementById('adminForm').addEventListener('submit', function(e) {
@@ -249,12 +316,25 @@
                 }
             };
 
+            const pwd = localStorage.getItem('admin_auth') || sessionStorage.getItem('admin_auth') || '';
+
             fetch(`${apiBase}/api/update`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + pwd
+                },
                 body: JSON.stringify(updatedData, null, 2)
             })
-            .then(res => res.json())
+            .then(res => {
+                if (res.status === 401) {
+                    localStorage.removeItem('admin_auth');
+                    sessionStorage.removeItem('admin_auth');
+                    document.getElementById('loginOverlay').style.display = 'flex';
+                    throw new Error('Ruxsat berilmadi: Parol xato, qaytadan kiring!');
+                }
+                return res.json();
+            })
             .then(resData => {
                 if(resData.success) {
                     statusDiv.textContent = 'Muvaffaqiyatli saqlandi! Asosiy saytni yangilab ko`ring.';
@@ -265,7 +345,7 @@
                 }
             })
             .catch(err => {
-                statusDiv.textContent = 'Tarmoq xatosi!';
+                statusDiv.textContent = err.message || 'Tarmoq xatosi!';
                 statusDiv.className = 'error';
             });
         });

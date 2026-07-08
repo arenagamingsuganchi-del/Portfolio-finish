@@ -1,7 +1,3 @@
-import { kv } from '@vercel/kv';
-import fs from 'fs';
-import path from 'path';
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,22 +16,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const authHeader = req.headers.authorization;
+    const { password } = req.body;
     const expectedPassword = process.env.ADMIN_PASSWORD || 'qaxxarov.98';
     
-    if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== expectedPassword) {
-      return res.status(401).json({ error: 'Ruxsat berilmadi: Parol noto\'g\'ri' });
-    }
-
-    const updatedData = req.body;
-
-    if (process.env.KV_REST_API_URL) {
-      await kv.set('portfolio_data', updatedData);
+    if (password === expectedPassword) {
       return res.status(200).json({ success: true });
     } else {
-      const localPath = path.join(process.cwd(), 'data.json');
-      fs.writeFileSync(localPath, JSON.stringify(updatedData, null, 2), 'utf8');
-      return res.status(200).json({ success: true });
+      return res.status(401).json({ error: 'Parol noto\'g\'ri' });
     }
   } catch (error) {
     return res.status(500).json({ error: error.message });
