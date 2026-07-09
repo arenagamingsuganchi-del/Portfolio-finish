@@ -561,6 +561,216 @@
             .nav-actions .btn span { display: none; }
             .btn { padding: 8px 12px; font-size: 0.85rem; }
         }
+
+        /* === PORTFOLIO GALLERY MODAL === */
+        .gallery-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(3, 0, 8, 0.97);
+            z-index: 10000;
+            display: none;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .gallery-overlay.active {
+            display: block;
+            animation: galleryFadeIn 0.4s ease;
+        }
+        @keyframes galleryFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .gallery-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
+            background: rgba(3, 0, 8, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-glass);
+        }
+        .gallery-header h2 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, var(--neon-cyan), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gallery-close {
+            width: 44px; height: 44px;
+            background: var(--glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 50%;
+            color: var(--text-main);
+            font-size: 1.3rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+        }
+        .gallery-close:hover {
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+        }
+        .gallery-filters {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            padding: 8px 20px;
+            border-radius: 50px;
+            border: 1px solid var(--border-glass);
+            background: transparent;
+            color: var(--text-muted);
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .filter-btn.active, .filter-btn:hover {
+            background: var(--glass);
+            color: var(--neon-cyan);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.2);
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            padding: 10px 30px 40px;
+        }
+        .gallery-item {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border-glass);
+            background: var(--glass);
+            cursor: pointer;
+            transition: transform 0.35s, border-color 0.35s, box-shadow 0.35s;
+            aspect-ratio: 4/3;
+        }
+        .gallery-item:hover {
+            transform: translateY(-5px);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 10px 30px rgba(0, 243, 255, 0.15);
+        }
+        .gallery-item img, .gallery-item video {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.5s;
+        }
+        .gallery-item:hover img, .gallery-item:hover video {
+            transform: scale(1.05);
+        }
+        .gallery-item .play-icon {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px; height: 60px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(255,255,255,0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #fff;
+            pointer-events: none;
+            transition: 0.3s;
+        }
+        .gallery-item:hover .play-icon {
+            background: rgba(0, 243, 255, 0.3);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
+        }
+        .gallery-item .item-title {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 12px 16px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.85));
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        .gallery-empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+        .gallery-empty i {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            display: block;
+            color: var(--border-glass);
+        }
+
+        /* Lightbox */
+        .lightbox {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 10001;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .lightbox.active { display: flex; }
+        .lightbox-content {
+            max-width: 95vw;
+            max-height: 90vh;
+            border-radius: 12px;
+            object-fit: contain;
+        }
+        .lightbox video.lightbox-content {
+            width: 90vw;
+            max-height: 85vh;
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 20px; right: 25px;
+            width: 50px; height: 50px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+            z-index: 10;
+        }
+        .lightbox-close:hover {
+            background: rgba(239, 68, 68, 0.4);
+            border-color: #ef4444;
+        }
+        @media (max-width: 768px) {
+            .gallery-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                padding: 10px 15px 30px;
+            }
+            .gallery-header { padding: 15px; }
+            .gallery-header h2 { font-size: 1.2rem; }
+            .filter-btn { padding: 6px 14px; font-size: 0.8rem; }
+            .gallery-item .play-icon { width: 44px; height: 44px; font-size: 1.1rem; }
+            .gallery-item .item-title { font-size: 0.75rem; padding: 8px 10px; }
+        }
     </style>
 </head>
 <body>
@@ -662,7 +872,7 @@
         <!-- LINKS GRID -->
         <section id="contact">
             <div class="links-grid reveal">
-                <a href="https://t.me/portfolio_Qaxxorov" target="_blank" class="link-card portfolio-card hover-target" id="displayPortfolio">
+                <a href="javascript:void(0)" onclick="openPortfolioGallery()" class="link-card portfolio-card hover-target" id="displayPortfolio">
                     <i class="fa-solid fa-briefcase"></i>
                     Portfolio
                 </a>
@@ -958,6 +1168,130 @@
             let scrollY = window.scrollY;
             watermark.style.transform = `translate(-50%, calc(-50% - ${scrollY * 0.2}px))`;
         });
+
+        // === 9. PORTFOLIO GALLERY MODAL ===
+        function openPortfolioGallery() {
+            const overlay = document.getElementById('galleryOverlay');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            loadGalleryWorks();
+        }
+        function closePortfolioGallery() {
+            const overlay = document.getElementById('galleryOverlay');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+            // Barcha videolarni to'xtatish
+            overlay.querySelectorAll('video').forEach(v => { v.pause(); v.src = ''; });
+        }
+
+        let galleryWorksCache = null;
+        function loadGalleryWorks(filterCat) {
+            const grid = document.getElementById('galleryGrid');
+            
+            function renderWorks(works) {
+                filterCat = filterCat || 'all';
+                const filtered = filterCat === 'all' ? works : works.filter(w => w.category === filterCat);
+
+                // Filter tugmalarini yangilash
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.cat === filterCat);
+                });
+
+                if (!filtered.length) {
+                    grid.innerHTML = '<div class="gallery-empty"><i class="fa-solid fa-images"></i>Hozircha ishlar yuklanmagan</div>';
+                    return;
+                }
+                grid.innerHTML = filtered.map((w, i) => {
+                    if (w.type === 'video') {
+                        return `<div class="gallery-item" onclick="openLightbox('${w.url}', 'video')">
+                            <video preload="metadata" muted playsinline loading="lazy"><source src="${w.url}" type="video/mp4"></video>
+                            <div class="play-icon"><i class="fa-solid fa-play"></i></div>
+                            ${w.title ? '<div class="item-title">' + w.title + '</div>' : ''}
+                        </div>`;
+                    } else {
+                        return `<div class="gallery-item" onclick="openLightbox('${w.url}', 'image')">
+                            <img src="${w.url}" alt="${w.title || 'Portfolio'}" loading="lazy">
+                            ${w.title ? '<div class="item-title">' + w.title + '</div>' : ''}
+                        </div>`;
+                    }
+                }).join('');
+            }
+
+            if (galleryWorksCache) {
+                renderWorks(galleryWorksCache);
+                return;
+            }
+
+            grid.innerHTML = '<div class="gallery-empty"><i class="fa-solid fa-spinner fa-spin"></i>Yuklanmoqda...</div>';
+            fetch(`${apiBase}/api/data`)
+                .then(r => r.json())
+                .then(data => {
+                    galleryWorksCache = data.works || [];
+                    renderWorks(galleryWorksCache);
+                })
+                .catch(() => {
+                    grid.innerHTML = '<div class="gallery-empty"><i class="fa-solid fa-triangle-exclamation"></i>Yuklanmadi. Qayta urinib ko\'ring.</div>';
+                });
+        }
+
+        function filterGallery(cat) {
+            loadGalleryWorks(cat);
+        }
+
+        // Lightbox
+        function openLightbox(url, type) {
+            const lb = document.getElementById('lightbox');
+            const content = document.getElementById('lightboxContent');
+            content.innerHTML = '';
+            if (type === 'video') {
+                const vid = document.createElement('video');
+                vid.className = 'lightbox-content';
+                vid.controls = true;
+                vid.autoplay = true;
+                vid.preload = 'auto';
+                vid.innerHTML = `<source src="${url}" type="video/mp4">`;
+                content.appendChild(vid);
+            } else {
+                const img = document.createElement('img');
+                img.className = 'lightbox-content';
+                img.src = url;
+                img.alt = 'Portfolio';
+                content.appendChild(img);
+            }
+            lb.classList.add('active');
+        }
+        function closeLightbox() {
+            const lb = document.getElementById('lightbox');
+            lb.classList.remove('active');
+            const content = document.getElementById('lightboxContent');
+            content.querySelectorAll('video').forEach(v => { v.pause(); v.src = ''; });
+            content.innerHTML = '';
+        }
+        // Lightbox tashqarisiga bosilganda yopilishi
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'lightbox') closeLightbox();
+        });
     </script>
+
+    <!-- PORTFOLIO GALLERY MODAL -->
+    <div class="gallery-overlay" id="galleryOverlay">
+        <div class="gallery-header">
+            <h2><i class="fa-solid fa-briefcase" style="margin-right: 8px;"></i>Portfolio Ishlarim</h2>
+            <button class="gallery-close" onclick="closePortfolioGallery()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="gallery-filters">
+            <button class="filter-btn active" data-cat="all" onclick="filterGallery('all')">Barchasi</button>
+            <button class="filter-btn" data-cat="graphic" onclick="filterGallery('graphic')">Grafik Dizayn</button>
+            <button class="filter-btn" data-cat="ai-image" onclick="filterGallery('ai-image')">AI Rasm</button>
+            <button class="filter-btn" data-cat="video" onclick="filterGallery('video')">Video</button>
+        </div>
+        <div class="gallery-grid" id="galleryGrid"></div>
+    </div>
+
+    <!-- LIGHTBOX -->
+    <div class="lightbox" id="lightbox">
+        <button class="lightbox-close" onclick="closeLightbox()"><i class="fa-solid fa-xmark"></i></button>
+        <div id="lightboxContent"></div>
+    </div>
 </body>
 </html>

@@ -84,6 +84,79 @@
             max-width: 400px;
         }
         .login-box input { margin-bottom: 20px; text-align: center; letter-spacing: 5px; }
+
+        /* Portfolio Works Manager */
+        .works-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+        .work-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .work-item img, .work-item video {
+            width: 60px; height: 45px;
+            object-fit: cover;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+        .work-item .work-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .work-item .work-info strong {
+            display: block;
+            font-size: 0.95rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .work-item .work-info small {
+            color: var(--text);
+            font-size: 0.8rem;
+        }
+        .work-item .btn-del {
+            width: 36px; height: 36px;
+            border-radius: 8px;
+            border: 1px solid rgba(239,68,68,0.4);
+            background: rgba(239,68,68,0.15);
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 1rem;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+        .work-item .btn-del:hover { background: rgba(239,68,68,0.4); }
+        .add-work-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .add-work-form .form-group { margin-bottom: 0; }
+        .add-work-form .full-width { grid-column: 1 / -1; }
+        .btn-add {
+            width: 100%;
+            padding: 12px;
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            color: #22c55e;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 0;
+        }
+        .btn-add:hover { background: rgba(34, 197, 94, 0.4); }
+        @media (max-width: 600px) {
+            .add-work-form { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -173,6 +246,34 @@
             <button type="submit">Ma'lumotlarni Saqlash</button>
             <div id="status"></div>
         </form>
+
+        <!-- PORTFOLIO WORKS MANAGER -->
+        <div class="section-title" style="margin-top: 40px;">Portfolio Ishlar</div>
+        <p style="color: var(--text); font-size: 0.9rem; margin-bottom: 10px;">Rasm yoki video URL manzilini kiritib, ishlaringizni qo'shing. 300-400MB gacha videolar qo'llab-quvvatlanadi.</p>
+        
+        <div class="add-work-form">
+            <div class="form-group">
+                <label>Sarlavha</label>
+                <input type="text" id="workTitle" placeholder="Masalan: Neon Poster">
+            </div>
+            <div class="form-group">
+                <label>Kategoriya</label>
+                <select id="workCategory" style="width:100%; padding:12px; background:var(--dark); border:1px solid var(--border); border-radius:8px; color:var(--white); font-family:inherit; font-size:1rem;">
+                    <option value="graphic">Grafik Dizayn</option>
+                    <option value="ai-image">AI Rasm</option>
+                    <option value="video">Video</option>
+                </select>
+            </div>
+            <div class="form-group full-width">
+                <label>Fayl URL manzili (rasm yoki video link)</label>
+                <input type="url" id="workUrl" placeholder="https://example.com/image.jpg">
+            </div>
+            <div class="full-width">
+                <button type="button" class="btn-add" onclick="addWork()"><i class="fa-solid fa-plus" style="margin-right:6px;"></i>Ish qo'shish</button>
+            </div>
+        </div>
+
+        <div class="works-list" id="worksList"></div>
     </div>
 
     <script>
@@ -282,6 +383,10 @@
                     document.getElementById('statClients').value = data.stats ? data.stats.clients : '';
                     document.getElementById('statProjects').value = data.stats ? data.stats.projects : '';
                     document.getElementById('statSatisfaction').value = data.stats ? data.stats.satisfaction : '';
+
+                    // Works
+                    currentWorks = data.works || [];
+                    renderWorksList();
                 }).catch(console.error);
         }
 
@@ -313,7 +418,8 @@
                     clients: document.getElementById('statClients').value,
                     projects: document.getElementById('statProjects').value,
                     satisfaction: document.getElementById('statSatisfaction').value
-                }
+                },
+                works: currentWorks
             };
 
             const pwd = localStorage.getItem('admin_auth') || sessionStorage.getItem('admin_auth') || '';
@@ -349,6 +455,62 @@
                 statusDiv.className = 'error';
             });
         });
+
+        // === PORTFOLIO WORKS MANAGEMENT ===
+        let currentWorks = [];
+
+        function renderWorksList() {
+            const list = document.getElementById('worksList');
+            if (!currentWorks.length) {
+                list.innerHTML = '<p style="color:var(--text); text-align:center; padding:20px;">Hozircha ishlar yo\'q. Yuqoridagi formadan qo\'shing.</p>';
+                return;
+            }
+            list.innerHTML = currentWorks.map((w, i) => {
+                const preview = w.type === 'video'
+                    ? `<video src="${w.url}" muted preload="metadata"></video>`
+                    : `<img src="${w.url}" alt="${w.title}">`;
+                const catLabels = { 'graphic': 'Grafik', 'ai-image': 'AI Rasm', 'video': 'Video' };
+                return `<div class="work-item">
+                    ${preview}
+                    <div class="work-info">
+                        <strong>${w.title || 'Nomsiz'}</strong>
+                        <small>${catLabels[w.category] || w.category}</small>
+                    </div>
+                    <button class="btn-del" onclick="removeWork(${i})" title="O'chirish"><i class="fa-solid fa-trash"></i></button>
+                </div>`;
+            }).join('');
+        }
+
+        function addWork() {
+            const title = document.getElementById('workTitle').value.trim();
+            const category = document.getElementById('workCategory').value;
+            const url = document.getElementById('workUrl').value.trim();
+
+            if (!url) { alert('Fayl URL manzilini kiriting!'); return; }
+
+            const type = (url.match(/\.(mp4|mov|webm|avi)$/i) || category === 'video') ? 'video' : 'image';
+
+            currentWorks.push({
+                id: Date.now().toString(),
+                title: title || 'Nomsiz',
+                type: type,
+                category: category,
+                url: url
+            });
+
+            // Inputlarni tozalash
+            document.getElementById('workTitle').value = '';
+            document.getElementById('workUrl').value = '';
+
+            renderWorksList();
+        }
+
+        function removeWork(index) {
+            if (confirm('Bu ishni o\'chirishni xohlaysizmi?')) {
+                currentWorks.splice(index, 1);
+                renderWorksList();
+            }
+        }
     </script>
 </body>
 </html>
