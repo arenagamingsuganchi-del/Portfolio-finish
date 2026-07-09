@@ -107,6 +107,91 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // API endpoint to react to a work
+    if (req.url === '/api/react' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
+            if (body.length > 1e6) {
+                res.writeHead(413, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Request body too large' }));
+                req.destroy();
+            }
+        });
+        req.on('end', () => {
+            try {
+                const { workId, emoji } = JSON.parse(body);
+                if (!workId || !emoji) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'workId and emoji are required' }));
+                    return;
+                }
+                const fileContent = fs.readFileSync(DATA_FILE, 'utf8');
+                const data = JSON.parse(fileContent);
+                const work = data.works.find(w => w.id === workId);
+                if (!work) {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Work not found' }));
+                    return;
+                }
+                if (!work.reactions) {
+                    work.reactions = {};
+                }
+                work.reactions[emoji] = (work.reactions[emoji] || 0) + 1;
+                fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, reactions: work.reactions }));
+            } catch (e) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Yaroqsiz so\'rov' }));
+            }
+        });
+        return;
+    }
+
+    // API endpoint to comment on a work
+    if (req.url === '/api/comment' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
+            if (body.length > 1e6) {
+                res.writeHead(413, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Request body too large' }));
+                req.destroy();
+            }
+        });
+        req.on('end', () => {
+            try {
+                const { workId, name, text } = JSON.parse(body);
+                if (!workId || !text) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'workId and text are required' }));
+                    return;
+                }
+                const commentName = name || 'Anonim';
+                const fileContent = fs.readFileSync(DATA_FILE, 'utf8');
+                const data = JSON.parse(fileContent);
+                const work = data.works.find(w => w.id === workId);
+                if (!work) {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Work not found' }));
+                    return;
+                }
+                if (!work.comments) {
+                    work.comments = [];
+                }
+                work.comments.push({ name: commentName, text, date: new Date().toISOString() });
+                fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, comments: work.comments }));
+            } catch (e) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Yaroqsiz so\'rov' }));
+            }
+        });
+        return;
+    }
+
     // Serve Static Files
     let safeUrl = req.url === '/' ? '/index.html' : req.url;
     safeUrl = safeUrl.split('?')[0]; // Remove query params

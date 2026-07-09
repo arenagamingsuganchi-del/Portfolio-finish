@@ -771,6 +771,157 @@
             .gallery-item .play-icon { width: 44px; height: 44px; font-size: 1.1rem; }
             .gallery-item .item-title { font-size: 0.75rem; padding: 8px 10px; }
         }
+
+        /* === EMOJI REACTIONS ON GALLERY CARDS === */
+        .item-reactions {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 6px 10px;
+            display: flex;
+            gap: 6px;
+            z-index: 3;
+            pointer-events: none;
+        }
+        .item-reactions .reaction-pill {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            padding: 3px 8px;
+            background: rgba(0,0,0,0.65);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: #fff;
+            backdrop-filter: blur(6px);
+        }
+        .item-reactions .reaction-pill span { font-size: 0.65rem; }
+
+        /* === LIGHTBOX DETAIL PANEL === */
+        .lightbox {
+            flex-direction: column;
+        }
+        .lightbox-detail {
+            width: 100%;
+            max-width: 700px;
+            margin-top: 16px;
+            flex-shrink: 0;
+        }
+        .lightbox-reactions {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 0;
+            flex-wrap: wrap;
+        }
+        .emoji-btn {
+            padding: 6px 14px;
+            border-radius: 50px;
+            border: 1px solid var(--border-glass);
+            background: rgba(20, 5, 40, 0.6);
+            color: #fff;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: 0.25s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .emoji-btn:hover {
+            border-color: var(--neon-cyan);
+            background: rgba(0, 243, 255, 0.15);
+            transform: scale(1.12);
+        }
+        .emoji-btn.reacted {
+            border-color: var(--neon-cyan);
+            background: rgba(0, 243, 255, 0.2);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.25);
+        }
+        .emoji-btn .emoji-count {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            min-width: 14px;
+            text-align: center;
+        }
+
+        /* Comments */
+        .lightbox-comments {
+            max-width: 700px;
+            width: 100%;
+            margin: 0 auto;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 0 10px;
+        }
+        .comment-item {
+            display: flex;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .comment-avatar {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .comment-body { flex: 1; min-width: 0; }
+        .comment-body strong { font-size: 0.85rem; color: var(--neon-cyan); }
+        .comment-body small { color: var(--text-muted); font-size: 0.7rem; margin-left: 8px; }
+        .comment-body p { font-size: 0.85rem; color: var(--text-main); margin-top: 3px; word-break: break-word; }
+        .comment-form {
+            display: flex;
+            gap: 8px;
+            max-width: 700px;
+            width: 100%;
+            margin: 12px auto 0;
+            padding: 0 10px;
+        }
+        .comment-form input {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 50px;
+            border: 1px solid var(--border-glass);
+            background: rgba(20, 5, 40, 0.5);
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            outline: none;
+            transition: 0.3s;
+        }
+        .comment-form input:focus { border-color: var(--neon-cyan); }
+        .comment-form input::placeholder { color: var(--text-muted); }
+        .comment-form button {
+            padding: 10px 18px;
+            border-radius: 50px;
+            border: 1px solid var(--neon-cyan);
+            background: rgba(0, 243, 255, 0.15);
+            color: var(--neon-cyan);
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.3s;
+            white-space: nowrap;
+        }
+        .comment-form button:hover { background: rgba(0, 243, 255, 0.3); }
+        .no-comments {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            padding: 15px 0;
+        }
+        @media (max-width: 768px) {
+            .lightbox-detail { margin-top: 10px; }
+            .emoji-btn { padding: 5px 10px; font-size: 0.95rem; }
+            .comment-form input { font-size: 0.8rem; padding: 8px 12px; }
+            .comment-form button { padding: 8px 14px; font-size: 0.8rem; }
+            .lightbox-comments { max-height: 150px; }
+        }
     </style>
 </head>
 <body>
@@ -1202,16 +1353,32 @@
                     return;
                 }
                 grid.innerHTML = filtered.map((w, i) => {
+                    // Reaksiyalar qisqacha ko'rinishi
+                    let reactionsHtml = '';
+                    if (w.reactions && Object.keys(w.reactions).length) {
+                        reactionsHtml = '<div class="item-reactions">' + 
+                            Object.entries(w.reactions)
+                                .filter(([e, c]) => c > 0)
+                                .slice(0, 4)
+                                .map(([emoji, count]) => `<div class="reaction-pill">${emoji} <span>${count}</span></div>`)
+                                .join('') + '</div>';
+                    }
+                    const commentsCount = (w.comments && w.comments.length) ? `<span style="position:absolute;top:8px;right:10px;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);padding:2px 8px;border-radius:20px;font-size:0.7rem;color:#fff;z-index:3;"><i class="fa-regular fa-comment" style="margin-right:3px;"></i>${w.comments.length}</span>` : '';
+
                     if (w.type === 'video') {
-                        return `<div class="gallery-item" onclick="openLightbox('${w.url}', 'video')">
+                        return `<div class="gallery-item" onclick="openLightbox('${w.id}')">
                             <video preload="metadata" muted playsinline loading="lazy"><source src="${w.url}" type="video/mp4"></video>
                             <div class="play-icon"><i class="fa-solid fa-play"></i></div>
                             ${w.title ? '<div class="item-title">' + w.title + '</div>' : ''}
+                            ${reactionsHtml}
+                            ${commentsCount}
                         </div>`;
                     } else {
-                        return `<div class="gallery-item" onclick="openLightbox('${w.url}', 'image')">
+                        return `<div class="gallery-item" onclick="openLightbox('${w.id}')">
                             <img src="${w.url}" alt="${w.title || 'Portfolio'}" loading="lazy">
                             ${w.title ? '<div class="item-title">' + w.title + '</div>' : ''}
+                            ${reactionsHtml}
+                            ${commentsCount}
                         </div>`;
                     }
                 }).join('');
@@ -1239,33 +1406,185 @@
         }
 
         // Lightbox
-        function openLightbox(url, type) {
+        const EMOJIS = ['🔥', '❤️', '👏', '😍', '💯', '🎨'];
+        let currentLightboxWorkId = null;
+
+        function openLightbox(workId) {
+            const work = (galleryWorksCache || []).find(w => w.id === workId);
+            if (!work) return;
+            currentLightboxWorkId = workId;
+
             const lb = document.getElementById('lightbox');
             const content = document.getElementById('lightboxContent');
             content.innerHTML = '';
-            if (type === 'video') {
+
+            // Media
+            if (work.type === 'video') {
                 const vid = document.createElement('video');
                 vid.className = 'lightbox-content';
                 vid.controls = true;
                 vid.autoplay = true;
                 vid.preload = 'auto';
-                vid.innerHTML = `<source src="${url}" type="video/mp4">`;
+                vid.innerHTML = `<source src="${work.url}" type="video/mp4">`;
                 content.appendChild(vid);
             } else {
                 const img = document.createElement('img');
                 img.className = 'lightbox-content';
-                img.src = url;
-                img.alt = 'Portfolio';
+                img.src = work.url;
+                img.alt = work.title || 'Portfolio';
                 content.appendChild(img);
             }
+
+            // Detail panel (reactions + comments)
+            const detail = document.createElement('div');
+            detail.className = 'lightbox-detail';
+
+            // Reactions
+            const reactions = work.reactions || {};
+            const myReactions = JSON.parse(localStorage.getItem('myReactions_' + workId) || '[]');
+            const reactionsHtml = EMOJIS.map(e => {
+                const count = reactions[e] || 0;
+                const reacted = myReactions.includes(e) ? 'reacted' : '';
+                return `<button class="emoji-btn ${reacted}" onclick="sendReaction('${workId}', '${e}', this)">${e}<span class="emoji-count">${count || ''}</span></button>`;
+            }).join('');
+            detail.innerHTML = `<div class="lightbox-reactions">${reactionsHtml}</div>`;
+
+            // Comments section
+            const comments = work.comments || [];
+            let commentsListHtml = '';
+            if (comments.length) {
+                commentsListHtml = comments.map(c => {
+                    const initials = (c.name || 'A').substring(0, 1).toUpperCase();
+                    const date = c.date ? new Date(c.date).toLocaleDateString('uz-UZ', {day:'numeric',month:'short'}) : '';
+                    return `<div class="comment-item">
+                        <div class="comment-avatar">${initials}</div>
+                        <div class="comment-body">
+                            <strong>${c.name || 'Anonim'}</strong><small>${date}</small>
+                            <p>${c.text}</p>
+                        </div>
+                    </div>`;
+                }).join('');
+            } else {
+                commentsListHtml = '<div class="no-comments">Hali izohlar yo\'q. Birinchi bo\'ling!</div>';
+            }
+
+            detail.innerHTML += `<div class="lightbox-comments" id="commentsScroll">${commentsListHtml}</div>`;
+            detail.innerHTML += `<div class="comment-form">
+                <input type="text" id="commentName" placeholder="Ismingiz" style="max-width:120px;">
+                <input type="text" id="commentText" placeholder="Izoh yozing..." onkeydown="if(event.key==='Enter')sendComment('${workId}')">
+                <button onclick="sendComment('${workId}')"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>`;
+
+            content.appendChild(detail);
             lb.classList.add('active');
+
+            // Scroll to bottom of comments + restore saved name
+            setTimeout(() => {
+                const cs = document.getElementById('commentsScroll');
+                if (cs) cs.scrollTop = cs.scrollHeight;
+                const savedName = localStorage.getItem('commentName');
+                const nameInput = document.getElementById('commentName');
+                if (savedName && nameInput) nameInput.value = savedName;
+            }, 100);
         }
+
+        // Send Reaction
+        async function sendReaction(workId, emoji, btnEl) {
+            // Optimistic UI update
+            const countEl = btnEl.querySelector('.emoji-count');
+            const currentCount = parseInt(countEl.textContent) || 0;
+            const myReactions = JSON.parse(localStorage.getItem('myReactions_' + workId) || '[]');
+            
+            if (myReactions.includes(emoji)) return; // Already reacted
+            
+            countEl.textContent = currentCount + 1;
+            btnEl.classList.add('reacted');
+            myReactions.push(emoji);
+            localStorage.setItem('myReactions_' + workId, JSON.stringify(myReactions));
+
+            // Also update local cache
+            const work = (galleryWorksCache || []).find(w => w.id === workId);
+            if (work) {
+                if (!work.reactions) work.reactions = {};
+                work.reactions[emoji] = (work.reactions[emoji] || 0) + 1;
+            }
+
+            try {
+                await fetch(`${apiBase}/api/react`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ workId, emoji })
+                });
+            } catch (e) {
+                console.error('Reaction error:', e);
+            }
+        }
+
+        // Send Comment
+        async function sendComment(workId) {
+            const nameInput = document.getElementById('commentName');
+            const textInput = document.getElementById('commentText');
+            const name = nameInput.value.trim() || 'Anonim';
+            const text = textInput.value.trim();
+
+            if (!text) return;
+
+            // Save name for future
+            localStorage.setItem('commentName', name);
+
+            const newComment = { name, text, date: new Date().toISOString() };
+
+            // Optimistic UI
+            const scroll = document.getElementById('commentsScroll');
+            const noComments = scroll.querySelector('.no-comments');
+            if (noComments) noComments.remove();
+
+            const initials = name.substring(0, 1).toUpperCase();
+            const dateStr = new Date().toLocaleDateString('uz-UZ', {day:'numeric',month:'short'});
+            scroll.innerHTML += `<div class="comment-item">
+                <div class="comment-avatar">${initials}</div>
+                <div class="comment-body">
+                    <strong>${name}</strong><small>${dateStr}</small>
+                    <p>${text}</p>
+                </div>
+            </div>`;
+            scroll.scrollTop = scroll.scrollHeight;
+            textInput.value = '';
+
+            // Update local cache
+            const work = (galleryWorksCache || []).find(w => w.id === workId);
+            if (work) {
+                if (!work.comments) work.comments = [];
+                work.comments.push(newComment);
+            }
+
+            try {
+                await fetch(`${apiBase}/api/comment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ workId, name, text })
+                });
+            } catch (e) {
+                console.error('Comment error:', e);
+            }
+        }
+
+        // Restore saved name
+        document.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('commentName');
+            // Will be applied when lightbox opens
+            if (saved) window._savedCommentName = saved;
+        });
+
         function closeLightbox() {
             const lb = document.getElementById('lightbox');
             lb.classList.remove('active');
             const content = document.getElementById('lightboxContent');
             content.querySelectorAll('video').forEach(v => { v.pause(); v.src = ''; });
             content.innerHTML = '';
+            currentLightboxWorkId = null;
+            // Galereyadagi reaksiya pilllarini yangilash
+            loadGalleryWorks();
         }
         // Lightbox tashqarisiga bosilganda yopilishi
         document.addEventListener('click', (e) => {
