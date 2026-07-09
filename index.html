@@ -120,6 +120,10 @@
             box-shadow: 0 0 25px var(--neon-purple), inset 0 0 12px var(--neon-purple);
         }
 
+        .no-custom-cursor, .no-custom-cursor * {
+            cursor: auto !important;
+        }
+
         /* BACKGROUND EFFECTS */
         .noise {
             position: fixed;
@@ -1296,7 +1300,10 @@
         const cursorDot = document.getElementById('cursor-dot');
         const cursorOutline = document.getElementById('cursor-outline');
         
-        if (window.matchMedia('(hover: hover)').matches && cursorDot && cursorOutline) {
+        // Touchscreen noutbuklarda ham custom cursor ishlashi uchun faqat telefon/planshetlarni cheklaymiz
+        const isMobileDevice = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth <= 768;
+
+        if (!isMobileDevice && cursorDot && cursorOutline) {
             let mouseX = window.innerWidth / 2;
             let mouseY = window.innerHeight / 2;
             let outlineX = mouseX;
@@ -1336,6 +1343,7 @@
         } else {
             if (cursorDot) cursorDot.style.display = 'none';
             if (cursorOutline) cursorOutline.style.display = 'none';
+            document.documentElement.classList.add('no-custom-cursor');
         }
 
         // === 8. PARALLAX WATERMARK ===
