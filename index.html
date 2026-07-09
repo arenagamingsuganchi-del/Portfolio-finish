@@ -1366,8 +1366,13 @@
                     const commentsCount = (w.comments && w.comments.length) ? `<span style="position:absolute;top:8px;right:10px;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);padding:2px 8px;border-radius:20px;font-size:0.7rem;color:#fff;z-index:3;"><i class="fa-regular fa-comment" style="margin-right:3px;"></i>${w.comments.length}</span>` : '';
 
                     if (w.type === 'video') {
+                        const ytId = getYouTubeId(w.url);
+                        const previewHtml = ytId 
+                            ? `<img src="https://img.youtube.com/vi/${ytId}/hqdefault.jpg" alt="${w.title || 'Video'}" loading="lazy">`
+                            : `<video preload="metadata" muted playsinline loading="lazy"><source src="${w.url}" type="video/mp4"></video>`;
+
                         return `<div class="gallery-item" onclick="openLightbox('${w.id}')">
-                            <video preload="metadata" muted playsinline loading="lazy"><source src="${w.url}" type="video/mp4"></video>
+                            ${previewHtml}
                             <div class="play-icon"><i class="fa-solid fa-play"></i></div>
                             ${w.title ? '<div class="item-title">' + w.title + '</div>' : ''}
                             ${reactionsHtml}
@@ -1420,13 +1425,26 @@
 
             // Media
             if (work.type === 'video') {
-                const vid = document.createElement('video');
-                vid.className = 'lightbox-content';
-                vid.controls = true;
-                vid.autoplay = true;
-                vid.preload = 'auto';
-                vid.innerHTML = `<source src="${work.url}" type="video/mp4">`;
-                content.appendChild(vid);
+                const ytId = getYouTubeId(work.url);
+                if (ytId) {
+                    const iframe = document.createElement('iframe');
+                    iframe.className = 'lightbox-content';
+                    iframe.src = `https://www.youtube.com/embed/${ytId}?autoplay=1`;
+                    iframe.style.width = '85vw';
+                    iframe.style.height = '48vw';
+                    iframe.style.border = 'none';
+                    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+                    iframe.allowFullscreen = true;
+                    content.appendChild(iframe);
+                } else {
+                    const vid = document.createElement('video');
+                    vid.className = 'lightbox-content';
+                    vid.controls = true;
+                    vid.autoplay = true;
+                    vid.preload = 'auto';
+                    vid.innerHTML = `<source src="${work.url}" type="video/mp4">`;
+                    content.appendChild(vid);
+                }
             } else {
                 const img = document.createElement('img');
                 img.className = 'lightbox-content';
@@ -1581,6 +1599,7 @@
             lb.classList.remove('active');
             const content = document.getElementById('lightboxContent');
             content.querySelectorAll('video').forEach(v => { v.pause(); v.src = ''; });
+            content.querySelectorAll('iframe').forEach(f => { f.src = ''; });
             content.innerHTML = '';
             currentLightboxWorkId = null;
             // Galereyadagi reaksiya pilllarini yangilash
@@ -1590,6 +1609,14 @@
         document.addEventListener('click', (e) => {
             if (e.target.id === 'lightbox') closeLightbox();
         });
+
+        // Helper: YouTube ID ni ajratib olish
+        function getYouTubeId(url) {
+            if (!url) return null;
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
     </script>
 
     <!-- PORTFOLIO GALLERY MODAL -->
