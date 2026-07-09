@@ -589,11 +589,7 @@
                 if (w.cover) {
                     preview = `<img src="${w.cover}" alt="${w.title}">`;
                 } else if (w.type === 'video') {
-                    if (w.url.includes('t.me/')) {
-                        preview = `<div style="width:60px; height:45px; background:#24a1de; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#fff;"><i class="fa-brands fa-telegram"></i></div>`;
-                    } else {
-                        preview = `<video src="${w.url}" muted preload="metadata"></video>`;
-                    }
+                    preview = `<img src="/video_cover.png" alt="${w.title}">`;
                 } else {
                     preview = `<img src="${w.url}" alt="${w.title}">`;
                 }
