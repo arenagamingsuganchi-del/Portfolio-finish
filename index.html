@@ -80,21 +80,44 @@
             border-radius: 50%;
             position: fixed;
             pointer-events: none;
-            z-index: 9999;
+            z-index: 999999;
             transform: translate(-50%, -50%);
-            box-shadow: 0 0 10px var(--neon-cyan);
+            box-shadow: 0 0 12px var(--neon-cyan), 0 0 20px var(--neon-cyan);
         }
 
         .cursor-outline {
             width: 40px;
             height: 40px;
-            border: 1px solid rgba(0, 243, 255, 0.5);
+            border: 2px solid rgba(0, 243, 255, 0.6);
             border-radius: 50%;
             position: fixed;
             pointer-events: none;
-            z-index: 9998;
+            z-index: 999998;
             transform: translate(-50%, -50%);
-            transition: width 0.2s, height 0.2s, background-color 0.2s;
+            transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1), 
+                        height 0.3s cubic-bezier(0.25, 1, 0.5, 1), 
+                        border-color 0.3s, 
+                        background-color 0.3s,
+                        box-shadow 0.3s;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+            animation: cursorPulse 1.5s infinite alternate ease-in-out;
+        }
+
+        @keyframes cursorPulse {
+            0% {
+                box-shadow: 0 0 8px rgba(0, 243, 255, 0.25);
+            }
+            100% {
+                box-shadow: 0 0 20px rgba(0, 243, 255, 0.65), inset 0 0 8px rgba(0, 243, 255, 0.35);
+            }
+        }
+
+        .cursor-outline.cursor-hover {
+            width: 70px;
+            height: 70px;
+            border-color: var(--neon-purple);
+            background-color: rgba(188, 19, 254, 0.12);
+            box-shadow: 0 0 25px var(--neon-purple), inset 0 0 12px var(--neon-purple);
         }
 
         /* BACKGROUND EFFECTS */
@@ -1295,17 +1318,20 @@
             }
             animateCursor();
 
-            document.querySelectorAll('.hover-target').forEach(el => {
-                el.addEventListener('mouseenter', () => {
-                    cursorOutline.style.width = '70px';
-                    cursorOutline.style.height = '70px';
-                    cursorOutline.style.backgroundColor = 'rgba(0, 243, 255, 0.1)';
-                });
-                el.addEventListener('mouseleave', () => {
-                    cursorOutline.style.width = '40px';
-                    cursorOutline.style.height = '40px';
-                    cursorOutline.style.backgroundColor = 'transparent';
-                });
+            // Event Delegation orqali dinamik elementlarni ham hover qilish (modal va lightbox uchun)
+            document.addEventListener('mouseover', (e) => {
+                const target = e.target.closest('.hover-target, .gallery-item, .filter-btn, .gallery-close, .emoji-btn, .comment-form button, .lightbox-close, a, button');
+                if (target) {
+                    cursorOutline.classList.add('cursor-hover');
+                }
+            });
+            document.addEventListener('mouseout', (e) => {
+                const target = e.target.closest('.hover-target, .gallery-item, .filter-btn, .gallery-close, .emoji-btn, .comment-form button, .lightbox-close, a, button');
+                if (!target || (e.relatedTarget && e.relatedTarget.closest('.hover-target, .gallery-item, .filter-btn, .gallery-close, .emoji-btn, .comment-form button, .lightbox-close, a, button'))) {
+                    // Target ustida qolamiz
+                } else {
+                    cursorOutline.classList.remove('cursor-hover');
+                }
             });
         } else {
             if (cursorDot) cursorDot.style.display = 'none';
