@@ -243,6 +243,17 @@
                 <input type="text" id="linkPhone" placeholder="+998901234567">
             </div>
 
+            <div class="section-title">Cloudinary Sozlamalari (Fayl Yuklash uchun)</div>
+            <p style="color: var(--text); font-size: 0.9rem; margin-bottom: 15px;">Fayllarni to'g'ridan-to'g'ri yuklash uchun bepul Cloudinary hisobingizdan ma'lumotlarni kiriting.</p>
+            <div class="form-group">
+                <label>Cloud Name</label>
+                <input type="text" id="cloudinaryCloudName" placeholder="Masalan: dxyz1234">
+            </div>
+            <div class="form-group">
+                <label>Upload Preset (Unsigned)</label>
+                <input type="text" id="cloudinaryUploadPreset" placeholder="Masalan: ml_default">
+            </div>
+
             <button type="submit">Ma'lumotlarni Saqlash</button>
             <div id="status"></div>
         </form>
@@ -264,12 +275,24 @@
                     <option value="video">Video</option>
                 </select>
             </div>
+            <div class="form-group full-width" style="margin-top: 15px;">
+                <label>Fayl tanlang (Rasm yoki Video)</label>
+                <input type="file" id="workFileInput" accept="image/*,video/*" style="display:none;" onchange="handleFileUpload(this)">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <button type="button" onclick="document.getElementById('workFileInput').click()" style="width:auto; margin-top:0; padding:10px 20px; background:var(--gold); color:var(--dark); font-weight:bold; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-cloud-arrow-up"></i> Kompyuterdan tanlash</button>
+                    <span id="uploadStatusText" style="font-size:0.9rem; color:var(--text);">Fayl tanlanmagan</span>
+                </div>
+                <!-- Progress Bar -->
+                <div id="uploadProgressContainer" style="display:none; width:100%; background:rgba(255,255,255,0.1); height:8px; border-radius:4px; margin-top:10px; overflow:hidden;">
+                    <div id="uploadProgressBar" style="width:0%; height:100%; background:var(--gold); transition:width 0.1s;"></div>
+                </div>
+            </div>
             <div class="form-group full-width">
-                <label>Fayl URL manzili (rasm yoki video link)</label>
-                <input type="url" id="workUrl" placeholder="https://example.com/image.jpg">
+                <label>Fayl URL manzili (avtomatik to'ldiriladi yoki link yozing)</label>
+                <input type="url" id="workUrl" placeholder="https://res.cloudinary.com/...">
             </div>
             <div class="full-width">
-                <button type="button" class="btn-add" onclick="addWork()"><i class="fa-solid fa-plus" style="margin-right:6px;"></i>Ish qo'shish</button>
+                <button type="button" class="btn-add" id="btnAddWork" onclick="addWork()"><i class="fa-solid fa-plus" style="margin-right:6px;"></i>Ish qo'shish</button>
             </div>
         </div>
 
@@ -384,6 +407,10 @@
                     document.getElementById('statProjects').value = data.stats ? data.stats.projects : '';
                     document.getElementById('statSatisfaction').value = data.stats ? data.stats.satisfaction : '';
 
+                    // Cloudinary
+                    document.getElementById('cloudinaryCloudName').value = data.cloudinary ? data.cloudinary.cloudName : '';
+                    document.getElementById('cloudinaryUploadPreset').value = data.cloudinary ? data.cloudinary.uploadPreset : '';
+
                     // Works
                     currentWorks = data.works || [];
                     renderWorksList();
@@ -418,6 +445,10 @@
                     clients: document.getElementById('statClients').value,
                     projects: document.getElementById('statProjects').value,
                     satisfaction: document.getElementById('statSatisfaction').value
+                },
+                cloudinary: {
+                    cloudName: document.getElementById('cloudinaryCloudName').value,
+                    uploadPreset: document.getElementById('cloudinaryUploadPreset').value
                 },
                 works: currentWorks
             };
@@ -458,6 +489,90 @@
 
         // === PORTFOLIO WORKS MANAGEMENT ===
         let currentWorks = [];
+        
+        // Cloudinary orqali yuklash funktsiyasi
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const cloudName = document.getElementById('cloudinaryCloudName').value.trim();
+            const uploadPreset = document.getElementById('cloudinaryUploadPreset').value.trim();
+
+            if (!cloudName || !uploadPreset) {
+                alert("Iltimos, avval sahifa pastidagi Cloudinary sozlamalarini (Cloud Name va Upload Preset) to'ldiring va 'Ma'lumotlarni Saqlash' tugmasini bosing!");
+                input.value = '';
+                return;
+            }
+
+            const statusText = document.getElementById('uploadStatusText');
+            const progressContainer = document.getElementById('uploadProgressContainer');
+            const progressBar = document.getElementById('uploadProgressBar');
+            const btnAdd = document.getElementById('btnAddWork');
+
+            statusText.textContent = `Yuklanmoqda: 0% (${(file.size / (1024 * 1024)).toFixed(1)} MB)`;
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            btnAdd.disabled = true;
+            btnAdd.style.opacity = '0.5';
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', uploadPreset);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/upload`, true);
+
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progressBar.style.width = percent + '%';
+                    statusText.textContent = `Yuklanmoqda: ${percent}% (${(file.size / (1024 * 1024)).toFixed(1)} MB)`;
+                }
+            };
+
+            xhr.onload = function() {
+                btnAdd.disabled = false;
+                btnAdd.style.opacity = '1';
+                progressContainer.style.display = 'none';
+
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    document.getElementById('workUrl').value = response.secure_url;
+                    statusText.textContent = "Yuklandi! 'Ish qo'shish' tugmasini bosing.";
+                    statusText.style.color = '#22c55e';
+
+                    // Fayl turiga qarab kategoriyani avtomatik tanlash
+                    const isVideo = file.type.startsWith('video/');
+                    const catSelect = document.getElementById('workCategory');
+                    if (isVideo) {
+                        catSelect.value = 'video';
+                    } else {
+                        // Agar rasm bo'lsa va kategoriya 'video' bo'lsa, 'graphic' ga o'tkazamiz
+                        if (catSelect.value === 'video') {
+                            catSelect.value = 'graphic';
+                        }
+                    }
+                } else {
+                    const errorResp = JSON.parse(xhr.responseText || '{}');
+                    alert("Yuklashda xatolik yuz berdi: " + (errorResp.error ? errorResp.error.message : xhr.statusText));
+                    statusText.textContent = "Xatolik yuz berdi!";
+                    statusText.style.color = '#ef4444';
+                }
+                input.value = '';
+            };
+
+            xhr.onerror = function() {
+                btnAdd.disabled = false;
+                btnAdd.style.opacity = '1';
+                progressContainer.style.display = 'none';
+                alert("Tarmoq xatosi tufayli yuklanmadi!");
+                statusText.textContent = "Tarmoq xatosi!";
+                statusText.style.color = '#ef4444';
+                input.value = '';
+            };
+
+            xhr.send(formData);
+        }
 
         function renderWorksList() {
             const list = document.getElementById('worksList');
