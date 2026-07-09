@@ -1365,27 +1365,38 @@
                     }
                     const commentsCount = (w.comments && w.comments.length) ? `<span style="position:absolute;top:8px;right:10px;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);padding:2px 8px;border-radius:20px;font-size:0.7rem;color:#fff;z-index:3;"><i class="fa-regular fa-comment" style="margin-right:3px;"></i>${w.comments.length}</span>` : '';
 
-                    if (w.type === 'video') {
+                    let previewHtml = '';
+                    if (w.cover) {
+                        previewHtml = `<img src="${w.cover}" alt="${w.title || 'Portfolio'}" loading="lazy">`;
+                    } else if (w.type === 'video') {
                         const ytId = getYouTubeId(w.url);
-                        const previewHtml = ytId 
-                            ? `<img src="https://img.youtube.com/vi/${ytId}/hqdefault.jpg" alt="${w.title || 'Video'}" loading="lazy">`
-                            : `<video preload="metadata" muted playsinline loading="lazy"><source src="${w.url}" type="video/mp4"></video>`;
+                        const isTelegram = w.url.includes('t.me/');
 
-                        return `<div class="gallery-item" onclick="openLightbox('${w.id}')">
-                            ${previewHtml}
-                            <div class="play-icon"><i class="fa-solid fa-play"></i></div>
-                            ${w.title ? '<div class="item-title">' + w.title + '</div>' : ''}
-                            ${reactionsHtml}
-                            ${commentsCount}
-                        </div>`;
+                        if (ytId) {
+                            previewHtml = `<img src="https://img.youtube.com/vi/${ytId}/hqdefault.jpg" alt="${w.title || 'Video'}" loading="lazy">`;
+                        } else if (isTelegram) {
+                            previewHtml = `
+                                <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(36, 161, 222, 0.15); border:1px solid rgba(36, 161, 222, 0.3);">
+                                    <i class="fa-brands fa-telegram" style="font-size:3.5rem; color:#24A1DE; filter:drop-shadow(0 0 15px rgba(36, 161, 222, 0.4)); margin-bottom:8px;"></i>
+                                    <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Telegram video</span>
+                                </div>
+                            `;
+                        } else {
+                            previewHtml = `<video preload="metadata" muted playsinline loading="lazy"><source src="${w.url}" type="video/mp4"></video>`;
+                        }
                     } else {
-                        return `<div class="gallery-item" onclick="openLightbox('${w.id}')">
-                            <img src="${w.url}" alt="${w.title || 'Portfolio'}" loading="lazy">
-                            ${w.title ? '<div class="item-title">' + w.title + '</div>' : ''}
-                            ${reactionsHtml}
-                            ${commentsCount}
-                        </div>`;
+                        previewHtml = `<img src="${w.url}" alt="${w.title || 'Portfolio'}" loading="lazy">`;
                     }
+
+                    const isVidType = (w.type === 'video') ? '<div class="play-icon"><i class="fa-solid fa-play"></i></div>' : '';
+
+                    return `<div class="gallery-item" onclick="openLightbox('${w.id}')">
+                        ${previewHtml}
+                        ${isVidType}
+                        ${w.title ? '<div class="item-title">' + w.title + '</div>' : ''}
+                        ${reactionsHtml}
+                        ${commentsCount}
+                    </div>`;
                 }).join('');
             }
 
@@ -1426,6 +1437,8 @@
             // Media
             if (work.type === 'video') {
                 const ytId = getYouTubeId(work.url);
+                const isTelegram = work.url.includes('t.me/');
+
                 if (ytId) {
                     const iframe = document.createElement('iframe');
                     iframe.className = 'lightbox-content';
@@ -1435,6 +1448,16 @@
                     iframe.style.border = 'none';
                     iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
                     iframe.allowFullscreen = true;
+                    content.appendChild(iframe);
+                } else if (isTelegram) {
+                    const cleanUrl = work.url.split('?')[0];
+                    const iframe = document.createElement('iframe');
+                    iframe.className = 'lightbox-content';
+                    iframe.src = `${cleanUrl}?embed=1&dark=1`;
+                    iframe.style.width = '90vw';
+                    iframe.style.maxWidth = '640px';
+                    iframe.style.height = '500px';
+                    iframe.style.border = 'none';
                     content.appendChild(iframe);
                 } else {
                     const vid = document.createElement('video');

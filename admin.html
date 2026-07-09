@@ -288,8 +288,12 @@
                 </div>
             </div>
             <div class="form-group full-width">
-                <label>Fayl URL manzili (avtomatik to'ldiriladi yoki link yozing)</label>
-                <input type="url" id="workUrl" placeholder="https://res.cloudinary.com/...">
+                <label>Fayl URL manzili (Telegram post linki yoki boshqa havola)</label>
+                <input type="url" id="workUrl" placeholder="Masalan: https://t.me/username/12">
+            </div>
+            <div class="form-group full-width">
+                <label>Muqova rasmi URL (Cover Image - ixtiyoriy, video yoki Telegram ishlari uchun)</label>
+                <input type="url" id="workCover" placeholder="Masalan: https://images.unsplash.com/photo-...">
             </div>
             <div class="full-width">
                 <button type="button" class="btn-add" id="btnAddWork" onclick="addWork()"><i class="fa-solid fa-plus" style="margin-right:6px;"></i>Ish qo'shish</button>
@@ -581,9 +585,18 @@
                 return;
             }
             list.innerHTML = currentWorks.map((w, i) => {
-                const preview = w.type === 'video'
-                    ? `<video src="${w.url}" muted preload="metadata"></video>`
-                    : `<img src="${w.url}" alt="${w.title}">`;
+                let preview = '';
+                if (w.cover) {
+                    preview = `<img src="${w.cover}" alt="${w.title}">`;
+                } else if (w.type === 'video') {
+                    if (w.url.includes('t.me/')) {
+                        preview = `<div style="width:60px; height:45px; background:#24a1de; display:flex; align-items:center; justify-content:center; border-radius:6px; color:#fff;"><i class="fa-brands fa-telegram"></i></div>`;
+                    } else {
+                        preview = `<video src="${w.url}" muted preload="metadata"></video>`;
+                    }
+                } else {
+                    preview = `<img src="${w.url}" alt="${w.title}">`;
+                }
                 const catLabels = { 'graphic': 'Grafik', 'ai-image': 'AI Rasm', 'video': 'Video' };
                 return `<div class="work-item">
                     ${preview}
@@ -600,22 +613,27 @@
             const title = document.getElementById('workTitle').value.trim();
             const category = document.getElementById('workCategory').value;
             const url = document.getElementById('workUrl').value.trim();
+            const cover = document.getElementById('workCover').value.trim();
 
             if (!url) { alert('Fayl URL manzilini kiriting!'); return; }
 
-            const type = (url.match(/\.(mp4|mov|webm|avi)$/i) || category === 'video') ? 'video' : 'image';
+            // Agar Telegram linki bo'lsa yoki kategoriya 'video' bo'lsa, 'video' deb belgilaymiz
+            const isTelegram = url.includes('t.me/');
+            const type = (url.match(/\.(mp4|mov|webm|avi)$/i) || category === 'video' || isTelegram) ? 'video' : 'image';
 
             currentWorks.push({
                 id: Date.now().toString(),
                 title: title || 'Nomsiz',
                 type: type,
                 category: category,
-                url: url
+                url: url,
+                cover: cover
             });
 
             // Inputlarni tozalash
             document.getElementById('workTitle').value = '';
             document.getElementById('workUrl').value = '';
+            document.getElementById('workCover').value = '';
 
             renderWorksList();
         }
