@@ -24,10 +24,12 @@ const server = http.createServer((req, res) => {
 
     // API endpoint to read data
     if (req.url === '/api/data' && req.method === 'GET') {
-        fs.readFile(DATA_FILE, 'utf8', (err, data) => {
+        const tmpPath = path.join('/tmp', 'data.json');
+        const targetFile = fs.existsSync(tmpPath) ? tmpPath : DATA_FILE;
+        fs.readFile(targetFile, 'utf8', (err, data) => {
             if (err) {
                 res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Faylni uqishda xatolik yuz berdi' }));
+                res.end(JSON.stringify({ error: 'Faylni o`qishda xatolik yuz berdi' }));
                 return;
             }
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -92,9 +94,17 @@ const server = http.createServer((req, res) => {
                 JSON.parse(body); 
                 fs.writeFile(DATA_FILE, body, 'utf8', (err) => {
                     if (err) {
-                        res.writeHead(500, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ error: 'Saqlashda xatolik yuz berdi' }));
-                        return;
+                        try {
+                            const tmpPath = path.join('/tmp', 'data.json');
+                            fs.writeFileSync(tmpPath, body, 'utf8');
+                            res.writeHead(200, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ success: true }));
+                            return;
+                        } catch (tmpErr) {
+                            res.writeHead(500, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({ error: 'Saqlashda xatolik yuz berdi: ' + tmpErr.message }));
+                            return;
+                        }
                     }
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ success: true }));
@@ -187,6 +197,62 @@ const server = http.createServer((req, res) => {
             } catch (e) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Yaroqsiz so\'rov' }));
+            }
+        });
+        return;
+    }
+
+    // API endpoint to upload files (Proxy to Catbox/tmpfiles)
+    if (req.url === '/api/upload' && req.method === 'POST') {
+        let chunks = [];
+        req.on('data', chunk => {
+            chunks.push(chunk);
+        });
+        req.on('end', async () => {
+            try {
+                const buffer = Buffer.concat(chunks);
+                const contentType = req.headers['content-type'] || 'multipart/form-data';
+
+                // 1. Catbox server-side upload
+                try {
+                    const catRes = await fetch('https://catbox.moe/user/api.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': contentType },
+                        body: buffer
+                    });
+                    const fileUrl = (await catRes.text()).trim();
+                    if (fileUrl.startsWith('http')) {
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: true, url: fileUrl }));
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Catbox upload error:', e);
+                }
+
+                // 2. Fallback to tmpfiles
+                try {
+                    const tmpRes = await fetch('https://tmpfiles.org/api/v1/upload', {
+                        method: 'POST',
+                        headers: { 'Content-Type': contentType },
+                        body: buffer
+                    });
+                    const json = await tmpRes.json();
+                    if (json.status === 'success' && json.data && json.data.url) {
+                        const directUrl = json.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: true, url: directUrl }));
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Tmpfiles upload error:', e);
+                }
+
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Faylni yuklab bo`lmadi' }));
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: err.message }));
             }
         });
         return;
