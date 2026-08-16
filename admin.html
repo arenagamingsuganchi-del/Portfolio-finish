@@ -509,12 +509,10 @@
             btnAdd.disabled = true;
             btnAdd.style.opacity = '0.5';
 
-            const formData = new FormData();
-            formData.append('reqtype', 'fileupload');
-            formData.append('fileToUpload', file);
-
             const xhr = new XMLHttpRequest();
             xhr.open('POST', '/api/upload', true);
+            xhr.setRequestHeader('x-file-name', encodeURIComponent(file.name));
+            xhr.setRequestHeader('x-file-type', file.type || 'application/octet-stream');
 
             xhr.upload.onprogress = function(e) {
                 if (e.lengthComputable) {
@@ -566,7 +564,7 @@
                 input.value = '';
             };
 
-            xhr.send(formData);
+            xhr.send(file);
         }
 
         function renderWorksList() {

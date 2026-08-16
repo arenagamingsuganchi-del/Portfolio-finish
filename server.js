@@ -211,14 +211,24 @@ const server = http.createServer((req, res) => {
         req.on('end', async () => {
             try {
                 const buffer = Buffer.concat(chunks);
-                const contentType = req.headers['content-type'] || 'multipart/form-data';
+                if (!buffer || buffer.length === 0) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Fayl bo`sh' }));
+                    return;
+                }
+
+                const fileName = req.headers['x-file-name'] ? decodeURIComponent(req.headers['x-file-name']) : 'upload.png';
+                const fileType = req.headers['x-file-type'] || 'application/octet-stream';
 
                 // 1. Catbox server-side upload
                 try {
+                    const formData = new FormData();
+                    formData.append('reqtype', 'fileupload');
+                    formData.append('fileToUpload', new Blob([buffer], { type: fileType }), fileName);
+
                     const catRes = await fetch('https://catbox.moe/user/api.php', {
                         method: 'POST',
-                        headers: { 'Content-Type': contentType },
-                        body: buffer
+                        body: formData
                     });
                     const fileUrl = (await catRes.text()).trim();
                     if (fileUrl.startsWith('http')) {
@@ -232,10 +242,12 @@ const server = http.createServer((req, res) => {
 
                 // 2. Fallback to tmpfiles
                 try {
+                    const formData = new FormData();
+                    formData.append('file', new Blob([buffer], { type: fileType }), fileName);
+
                     const tmpRes = await fetch('https://tmpfiles.org/api/v1/upload', {
                         method: 'POST',
-                        headers: { 'Content-Type': contentType },
-                        body: buffer
+                        body: formData
                     });
                     const json = await tmpRes.json();
                     if (json.status === 'success' && json.data && json.data.url) {
