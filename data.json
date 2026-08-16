@@ -20,5 +20,9 @@
     "projects": "100+",
     "satisfaction": "98%"
   },
-  "works": []
+  "works": [],
+  "cloudinary": {
+    "cloudName": "",
+    "uploadPreset": ""
+  }
 }
