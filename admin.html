@@ -243,15 +243,11 @@
                 <input type="text" id="linkPhone" placeholder="+998901234567">
             </div>
 
-            <div class="section-title">Cloudinary Sozlamalari (Fayl Yuklash uchun)</div>
-            <p style="color: var(--text); font-size: 0.9rem; margin-bottom: 15px;">Fayllarni to'g'ridan-to'g'ri yuklash uchun bepul Cloudinary hisobingizdan ma'lumotlarni kiriting.</p>
-            <div class="form-group">
-                <label>Cloud Name</label>
-                <input type="text" id="cloudinaryCloudName" placeholder="Masalan: dxyz1234">
-            </div>
-            <div class="form-group">
-                <label>Upload Preset (Unsigned)</label>
-                <input type="text" id="cloudinaryUploadPreset" placeholder="Masalan: ml_default">
+            <div class="section-title">⚡ Avtomatik Bulutli Fayl Saqlash Tizimi</div>
+            <p style="color: var(--text); font-size: 0.9rem; margin-bottom: 15px;">Ro'yxatdan o'tish yoki hech qanday sozlash shart emas! Istalgan rasm yoki videoni shunchaki kompyuter yoki telefoningizdan tanlang — u avtomatik ravishda bepul bulutga yuklanadi.</p>
+            <div style="display:flex; align-items:center; gap:8px; padding:10px 15px; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:8px;">
+                <i class="fa-solid fa-bolt" style="color:#22c55e; font-size:1.2rem;"></i>
+                <span style="color:#22c55e; font-size:0.9rem; font-weight:600;">Avtomatik bepul yuklash faol va ishlayapti (200 MB gacha)</span>
             </div>
 
             <button type="submit">Ma'lumotlarni Saqlash</button>
@@ -411,9 +407,7 @@
                     document.getElementById('statProjects').value = data.stats ? data.stats.projects : '';
                     document.getElementById('statSatisfaction').value = data.stats ? data.stats.satisfaction : '';
 
-                    // Cloudinary
-                    document.getElementById('cloudinaryCloudName').value = data.cloudinary ? data.cloudinary.cloudName : '';
-                    document.getElementById('cloudinaryUploadPreset').value = data.cloudinary ? data.cloudinary.uploadPreset : '';
+                    // Firebase (config is hardcoded, no need to load from data)
 
                     // Works
                     currentWorks = data.works || [];
@@ -450,10 +444,7 @@
                     projects: document.getElementById('statProjects').value,
                     satisfaction: document.getElementById('statSatisfaction').value
                 },
-                cloudinary: {
-                    cloudName: document.getElementById('cloudinaryCloudName').value,
-                    uploadPreset: document.getElementById('cloudinaryUploadPreset').value
-                },
+                cloudinary: { cloudName: '', uploadPreset: '' },
                 works: currentWorks
             };
 
@@ -494,16 +485,14 @@
         // === PORTFOLIO WORKS MANAGEMENT ===
         let currentWorks = [];
         
-        // Cloudinary orqali yuklash funktsiyasi
+        // Avtomatik Bepul Bulutli Saqlash (Ro'yxatdan o'tish shart emas)
         function handleFileUpload(input) {
             const file = input.files[0];
             if (!file) return;
 
-            const cloudName = document.getElementById('cloudinaryCloudName').value.trim();
-            const uploadPreset = document.getElementById('cloudinaryUploadPreset').value.trim();
-
-            if (!cloudName || !uploadPreset) {
-                alert("Iltimos, avval sahifa pastidagi Cloudinary sozlamalarini (Cloud Name va Upload Preset) to'ldiring va 'Ma'lumotlarni Saqlash' tugmasini bosing!");
+            const maxSize = 200 * 1024 * 1024; // 200 MB limit
+            if (file.size > maxSize) {
+                alert(`Fayl hajmi juda katta (${(file.size / (1024 * 1024)).toFixed(1)} MB). Maksimal: 200 MB`);
                 input.value = '';
                 return;
             }
@@ -513,24 +502,78 @@
             const progressBar = document.getElementById('uploadProgressBar');
             const btnAdd = document.getElementById('btnAddWork');
 
-            statusText.textContent = `Yuklanmoqda: 0% (${(file.size / (1024 * 1024)).toFixed(1)} MB)`;
+            statusText.textContent = `Yuklanmoqda: 0% (${(file.size / (1024 * 1024)).toFixed(1)} MB)...`;
+            statusText.style.color = 'var(--gold)';
             progressContainer.style.display = 'block';
             progressBar.style.width = '0%';
             btnAdd.disabled = true;
             btnAdd.style.opacity = '0.5';
 
             const formData = new FormData();
-            formData.append('file', file);
-            formData.append('upload_preset', uploadPreset);
+            formData.append('reqtype', 'fileupload');
+            formData.append('fileToUpload', file);
 
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/upload`, true);
+            xhr.open('POST', 'https://catbox.moe/user/api.php', true);
 
             xhr.upload.onprogress = function(e) {
                 if (e.lengthComputable) {
                     const percent = Math.round((e.loaded / e.total) * 100);
                     progressBar.style.width = percent + '%';
-                    statusText.textContent = `Yuklanmoqda: ${percent}% (${(file.size / (1024 * 1024)).toFixed(1)} MB)`;
+                    statusText.textContent = `⚡ Bulutga yuklanmoqda: ${percent}% (${(file.size / (1024 * 1024)).toFixed(1)} MB)`;
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status === 200 && xhr.responseText.trim().startsWith('http')) {
+                    btnAdd.disabled = false;
+                    btnAdd.style.opacity = '1';
+                    progressContainer.style.display = 'none';
+
+                    const uploadedUrl = xhr.responseText.trim();
+                    document.getElementById('workUrl').value = uploadedUrl;
+                    statusText.textContent = "✅ Muvaffaqiyatli yuklandi! 'Ish qo'shish' tugmasini bosing.";
+                    statusText.style.color = '#22c55e';
+
+                    const isVideo = file.type.startsWith('video/');
+                    const catSelect = document.getElementById('workCategory');
+                    if (isVideo) {
+                        catSelect.value = 'video';
+                    } else if (catSelect.value === 'video') {
+                        catSelect.value = 'graphic';
+                    }
+                    input.value = '';
+                } else {
+                    uploadToTmpFiles(file, input);
+                }
+            };
+
+            xhr.onerror = function() {
+                uploadToTmpFiles(file, input);
+            };
+
+            xhr.send(formData);
+        }
+
+        function uploadToTmpFiles(file, input) {
+            const statusText = document.getElementById('uploadStatusText');
+            const progressContainer = document.getElementById('uploadProgressContainer');
+            const progressBar = document.getElementById('uploadProgressBar');
+            const btnAdd = document.getElementById('btnAddWork');
+
+            statusText.textContent = `Zaxira bulutga yuklanmoqda...`;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'https://tmpfiles.org/api/v1/upload', true);
+
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progressBar.style.width = percent + '%';
+                    statusText.textContent = `Zaxira bulutga yuklanmoqda: ${percent}%`;
                 }
             };
 
@@ -539,40 +582,32 @@
                 btnAdd.style.opacity = '1';
                 progressContainer.style.display = 'none';
 
-                if (xhr.status === 200) {
-                    const response = JSON.parse(xhr.responseText);
-                    document.getElementById('workUrl').value = response.secure_url;
-                    statusText.textContent = "Yuklandi! 'Ish qo'shish' tugmasini bosing.";
-                    statusText.style.color = '#22c55e';
-
-                    // Fayl turiga qarab kategoriyani avtomatik tanlash
-                    const isVideo = file.type.startsWith('video/');
-                    const catSelect = document.getElementById('workCategory');
-                    if (isVideo) {
-                        catSelect.value = 'video';
+                try {
+                    const json = JSON.parse(xhr.responseText);
+                    if (json.status === 'success' && json.data && json.data.url) {
+                        const directUrl = json.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+                        document.getElementById('workUrl').value = directUrl;
+                        statusText.textContent = "✅ Muvaffaqiyatli yuklandi! 'Ish qo'shish' tugmasini bosing.";
+                        statusText.style.color = '#22c55e';
                     } else {
-                        // Agar rasm bo'lsa va kategoriya 'video' bo'lsa, 'graphic' ga o'tkazamiz
-                        if (catSelect.value === 'video') {
-                            catSelect.value = 'graphic';
-                        }
+                        throw new Error('Upload failed');
                     }
-                } else {
-                    const errorResp = JSON.parse(xhr.responseText || '{}');
-                    alert("Yuklashda xatolik yuz berdi: " + (errorResp.error ? errorResp.error.message : xhr.statusText));
-                    statusText.textContent = "Xatolik yuz berdi!";
+                } catch(e) {
+                    alert("Yuklashda xatolik yuz berdi. Iltimos qayta urinib ko'ring!");
+                    statusText.textContent = "Yuklashda xatolik!";
                     statusText.style.color = '#ef4444';
                 }
-                input.value = '';
+                if (input) input.value = '';
             };
 
             xhr.onerror = function() {
                 btnAdd.disabled = false;
                 btnAdd.style.opacity = '1';
                 progressContainer.style.display = 'none';
-                alert("Tarmoq xatosi tufayli yuklanmadi!");
+                alert("Tarmoq xatosi!");
                 statusText.textContent = "Tarmoq xatosi!";
                 statusText.style.color = '#ef4444';
-                input.value = '';
+                if (input) input.value = '';
             };
 
             xhr.send(formData);
