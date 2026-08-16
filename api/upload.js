@@ -21,68 +21,102 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const logs = [];
+  const log = (msg) => { logs.push(msg); };
+
   try {
     const chunks = [];
     for await (const chunk of req) {
       chunks.push(chunk);
     }
     const buffer = Buffer.concat(chunks);
+    log(`Received ${buffer.length} bytes`);
 
     if (!buffer || buffer.length === 0) {
-      return res.status(400).json({ error: 'Fayl bo\'sh yoki topilmadi' });
+      return res.status(400).json({ error: 'Fayl bo\'sh', logs });
     }
 
     const fileName = req.headers['x-file-name']
       ? decodeURIComponent(req.headers['x-file-name'])
       : 'upload_' + Date.now() + '.png';
     const fileType = req.headers['x-file-type'] || 'application/octet-stream';
+    log(`File: ${fileName}, Type: ${fileType}`);
+    log(`Node version: ${process.version}`);
+    log(`FormData available: ${typeof FormData !== 'undefined'}`);
+    log(`Blob available: ${typeof Blob !== 'undefined'}`);
 
-    // 1. Catbox ga yuklash (doimiy havolalar - hech qachon o'chmaydi)
+    // 1. Catbox - manual multipart/form-data (FormData bo'lmasa ham ishlaydi)
     try {
-      const formData = new FormData();
-      formData.append('reqtype', 'fileupload');
-      formData.append('fileToUpload', new Blob([buffer], { type: fileType }), fileName);
+      const boundary = '----CatboxBoundary' + Date.now();
+      const parts = [];
+      
+      // reqtype field
+      parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="reqtype"\r\n\r\nfileupload`);
+      
+      // file field
+      parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="fileToUpload"; filename="${fileName}"\r\nContent-Type: ${fileType}\r\n\r\n`);
+      
+      const header = Buffer.from(parts.join('\r\n') + '\r\n', 'utf-8');
+      const footer = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8');
+      const body = Buffer.concat([header, buffer, footer]);
+
+      log(`Catbox request size: ${body.length} bytes`);
 
       const catRes = await fetch('https://catbox.moe/user/api.php', {
         method: 'POST',
-        body: formData,
         headers: {
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
-        }
+        },
+        body: body
       });
+
       const catText = (await catRes.text()).trim();
+      log(`Catbox status: ${catRes.status}`);
+      log(`Catbox response: ${catText.substring(0, 200)}`);
 
       if (catText.startsWith('http')) {
-        return res.status(200).json({ success: true, url: catText });
+        return res.status(200).json({ success: true, url: catText, logs });
       }
     } catch (e) {
-      // Catbox xato bersa, zaxira usulga o'tamiz
+      log(`Catbox error: ${e.message}`);
     }
 
-    // 2. Zaxira: tmpfiles ga yuklash
+    // 2. Zaxira: tmpfiles
     try {
-      const formData = new FormData();
-      formData.append('file', new Blob([buffer], { type: fileType }), fileName);
+      const boundary = '----TmpBoundary' + Date.now();
+      const parts = [];
+      parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${fileType}\r\n\r\n`);
+      
+      const header = Buffer.from(parts.join(''), 'utf-8');
+      const footer = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8');
+      const body = Buffer.concat([header, buffer, footer]);
 
       const tmpRes = await fetch('https://tmpfiles.org/api/v1/upload', {
         method: 'POST',
-        body: formData,
         headers: {
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
+        },
+        body: body
       });
-      const json = await tmpRes.json();
 
+      const tmpText = await tmpRes.text();
+      log(`Tmpfiles status: ${tmpRes.status}`);
+      log(`Tmpfiles response: ${tmpText.substring(0, 200)}`);
+
+      const json = JSON.parse(tmpText);
       if (json.status === 'success' && json.data && json.data.url) {
         const directUrl = json.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-        return res.status(200).json({ success: true, url: directUrl });
+        return res.status(200).json({ success: true, url: directUrl, logs });
       }
     } catch (e) {
-      // Tmpfiles ham xato bersa, oxirgi xabar
+      log(`Tmpfiles error: ${e.message}`);
     }
 
-    return res.status(500).json({ error: 'Faylni yuklab bo\'lmadi. Qayta urinib ko\'ring.' });
+    return res.status(500).json({ error: 'Faylni yuklab bo\'lmadi', logs });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    log(`Fatal error: ${error.message}`);
+    return res.status(500).json({ error: error.message, logs });
   }
 }
