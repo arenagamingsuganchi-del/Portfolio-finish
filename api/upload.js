@@ -22,7 +22,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Raw binary buffer ni olish
     const chunks = [];
     for await (const chunk of req) {
       chunks.push(chunk);
@@ -38,9 +37,7 @@ export default async function handler(req, res) {
       : 'upload_' + Date.now() + '.png';
     const fileType = req.headers['x-file-type'] || 'application/octet-stream';
 
-    console.log(`Upload: ${fileName} (${buffer.length} bytes, type: ${fileType})`);
-
-    // 1. Catbox ga yuklash (doimiy havolalar)
+    // 1. Catbox ga yuklash (doimiy havolalar - hech qachon o'chmaydi)
     try {
       const formData = new FormData();
       formData.append('reqtype', 'fileupload');
@@ -48,16 +45,18 @@ export default async function handler(req, res) {
 
       const catRes = await fetch('https://catbox.moe/user/api.php', {
         method: 'POST',
-        body: formData
+        body: formData,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+        }
       });
       const catText = (await catRes.text()).trim();
-      console.log('Catbox response:', catText);
 
       if (catText.startsWith('http')) {
         return res.status(200).json({ success: true, url: catText });
       }
     } catch (e) {
-      console.error('Catbox error:', e.message);
+      // Catbox xato bersa, zaxira usulga o'tamiz
     }
 
     // 2. Zaxira: tmpfiles ga yuklash
@@ -67,22 +66,23 @@ export default async function handler(req, res) {
 
       const tmpRes = await fetch('https://tmpfiles.org/api/v1/upload', {
         method: 'POST',
-        body: formData
+        body: formData,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
       });
       const json = await tmpRes.json();
-      console.log('Tmpfiles response:', json);
 
       if (json.status === 'success' && json.data && json.data.url) {
         const directUrl = json.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
         return res.status(200).json({ success: true, url: directUrl });
       }
     } catch (e) {
-      console.error('Tmpfiles error:', e.message);
+      // Tmpfiles ham xato bersa, oxirgi xabar
     }
 
     return res.status(500).json({ error: 'Faylni yuklab bo\'lmadi. Qayta urinib ko\'ring.' });
   } catch (error) {
-    console.error('Upload handler error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
