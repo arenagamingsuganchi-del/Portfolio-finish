@@ -27,9 +27,15 @@ export default async function handler(req, res) {
       }
       return res.status(200).json(data);
     } else {
-      const localPath = path.join(process.cwd(), 'data.json');
-      const fileContent = fs.readFileSync(localPath, 'utf8');
-      return res.status(200).json(JSON.parse(fileContent));
+      const tmpPath = path.join('/tmp', 'data.json');
+      if (fs.existsSync(tmpPath)) {
+        const content = fs.readFileSync(tmpPath, 'utf8');
+        return res.status(200).json(JSON.parse(content));
+      } else {
+        const localPath = path.join(process.cwd(), 'data.json');
+        const fileContent = fs.readFileSync(localPath, 'utf8');
+        return res.status(200).json(JSON.parse(fileContent));
+      }
     }
   } catch (error) {
     return res.status(500).json({ error: error.message });

@@ -485,7 +485,7 @@
         // === PORTFOLIO WORKS MANAGEMENT ===
         let currentWorks = [];
         
-        // Avtomatik Bepul Bulutli Saqlash (Ro'yxatdan o'tish shart emas)
+        // Avtomatik Bepul Bulutli Saqlash (/api/upload serverless proxy orqali)
         function handleFileUpload(input) {
             const file = input.files[0];
             if (!file) return;
@@ -514,7 +514,7 @@
             formData.append('fileToUpload', file);
 
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', 'https://catbox.moe/user/api.php', true);
+            xhr.open('POST', '/api/upload', true);
 
             xhr.upload.onprogress = function(e) {
                 if (e.lengthComputable) {
@@ -525,89 +525,45 @@
             };
 
             xhr.onload = function() {
-                if (xhr.status === 200 && xhr.responseText.trim().startsWith('http')) {
-                    btnAdd.disabled = false;
-                    btnAdd.style.opacity = '1';
-                    progressContainer.style.display = 'none';
-
-                    const uploadedUrl = xhr.responseText.trim();
-                    document.getElementById('workUrl').value = uploadedUrl;
-                    statusText.textContent = "✅ Muvaffaqiyatli yuklandi! 'Ish qo'shish' tugmasini bosing.";
-                    statusText.style.color = '#22c55e';
-
-                    const isVideo = file.type.startsWith('video/');
-                    const catSelect = document.getElementById('workCategory');
-                    if (isVideo) {
-                        catSelect.value = 'video';
-                    } else if (catSelect.value === 'video') {
-                        catSelect.value = 'graphic';
-                    }
-                    input.value = '';
-                } else {
-                    uploadToTmpFiles(file, input);
-                }
-            };
-
-            xhr.onerror = function() {
-                uploadToTmpFiles(file, input);
-            };
-
-            xhr.send(formData);
-        }
-
-        function uploadToTmpFiles(file, input) {
-            const statusText = document.getElementById('uploadStatusText');
-            const progressContainer = document.getElementById('uploadProgressContainer');
-            const progressBar = document.getElementById('uploadProgressBar');
-            const btnAdd = document.getElementById('btnAddWork');
-
-            statusText.textContent = `Zaxira bulutga yuklanmoqda...`;
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', 'https://tmpfiles.org/api/v1/upload', true);
-
-            xhr.upload.onprogress = function(e) {
-                if (e.lengthComputable) {
-                    const percent = Math.round((e.loaded / e.total) * 100);
-                    progressBar.style.width = percent + '%';
-                    statusText.textContent = `Zaxira bulutga yuklanmoqda: ${percent}%`;
-                }
-            };
-
-            xhr.onload = function() {
                 btnAdd.disabled = false;
                 btnAdd.style.opacity = '1';
                 progressContainer.style.display = 'none';
 
                 try {
-                    const json = JSON.parse(xhr.responseText);
-                    if (json.status === 'success' && json.data && json.data.url) {
-                        const directUrl = json.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-                        document.getElementById('workUrl').value = directUrl;
+                    const res = JSON.parse(xhr.responseText);
+                    if (xhr.status === 200 && res.success && res.url) {
+                        document.getElementById('workUrl').value = res.url;
                         statusText.textContent = "✅ Muvaffaqiyatli yuklandi! 'Ish qo'shish' tugmasini bosing.";
                         statusText.style.color = '#22c55e';
+
+                        const isVideo = file.type.startsWith('video/');
+                        const catSelect = document.getElementById('workCategory');
+                        if (isVideo) {
+                            catSelect.value = 'video';
+                        } else if (catSelect.value === 'video') {
+                            catSelect.value = 'graphic';
+                        }
                     } else {
-                        throw new Error('Upload failed');
+                        alert("Yuklashda xatolik: " + (res.error || 'Server javob bermadi'));
+                        statusText.textContent = "Yuklashda xatolik!";
+                        statusText.style.color = '#ef4444';
                     }
                 } catch(e) {
-                    alert("Yuklashda xatolik yuz berdi. Iltimos qayta urinib ko'ring!");
+                    alert("Yuklashda xatolik yuz berdi.");
                     statusText.textContent = "Yuklashda xatolik!";
                     statusText.style.color = '#ef4444';
                 }
-                if (input) input.value = '';
+                input.value = '';
             };
 
             xhr.onerror = function() {
                 btnAdd.disabled = false;
                 btnAdd.style.opacity = '1';
                 progressContainer.style.display = 'none';
-                alert("Tarmoq xatosi!");
+                alert("Tarmoq xatosi tufayli yuklanmadi!");
                 statusText.textContent = "Tarmoq xatosi!";
                 statusText.style.color = '#ef4444';
-                if (input) input.value = '';
+                input.value = '';
             };
 
             xhr.send(formData);

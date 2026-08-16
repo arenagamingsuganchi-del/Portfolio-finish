@@ -27,16 +27,28 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Ruxsat berilmadi: Parol noto\'g\'ri' });
     }
 
-    const updatedData = req.body;
+    const updatedData = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
     if (process.env.KV_REST_API_URL) {
       await kv.set('portfolio_data', updatedData);
-      return res.status(200).json({ success: true });
     } else {
-      const localPath = path.join(process.cwd(), 'data.json');
-      fs.writeFileSync(localPath, JSON.stringify(updatedData, null, 2), 'utf8');
-      return res.status(200).json({ success: true });
+      // 1. Try writing to /tmp/data.json
+      try {
+        const tmpPath = path.join('/tmp', 'data.json');
+        fs.writeFileSync(tmpPath, JSON.stringify(updatedData, null, 2), 'utf8');
+      } catch (e) {
+        console.error('/tmp write error:', e);
+      }
+      // 2. Try writing to local data.json if writable
+      try {
+        const localPath = path.join(process.cwd(), 'data.json');
+        fs.writeFileSync(localPath, JSON.stringify(updatedData, null, 2), 'utf8');
+      } catch (e) {
+        console.log('Read-only filesystem, fallback to /tmp handled');
+      }
     }
+
+    return res.status(200).json({ success: true });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
