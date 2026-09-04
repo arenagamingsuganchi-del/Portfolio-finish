@@ -1,6 +1,7 @@
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
@@ -10,11 +11,53 @@ const __dirname = dirname(__filename);
 const PORT = 3000;
 const DATA_FILE = path.join(__dirname, 'data.json');
 
+// Vercel KV / Upstash Redis helpers using global fetch
+async function getKvData() {
+    const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+    const kvToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!kvUrl || !kvToken) return null;
+
+    try {
+        const res = await fetch(`${kvUrl}/get/portfolio_data`, {
+            headers: { Authorization: `Bearer ${kvToken}` }
+        });
+        const json = await res.json();
+        if (json && json.result) {
+            return typeof json.result === 'string' ? JSON.parse(json.result) : json.result;
+        }
+    } catch (e) {
+        console.error('KV get error:', e);
+    }
+    return null;
+}
+
+async function setKvData(data) {
+    const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+    const kvToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!kvUrl || !kvToken) return false;
+
+    try {
+        const bodyStr = typeof data === 'string' ? data : JSON.stringify(data);
+        await fetch(`${kvUrl}/set/portfolio_data`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${kvToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(bodyStr)
+        });
+        return true;
+    } catch (e) {
+        console.error('KV set error:', e);
+        return false;
+    }
+}
+
 const server = http.createServer((req, res) => {
-    // Enable CORS for development
+    // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-File-Name, X-File-Type');
 
     if (req.method === 'OPTIONS') {
         res.writeHead(204);
@@ -24,17 +67,26 @@ const server = http.createServer((req, res) => {
 
     // API endpoint to read data
     if (req.url === '/api/data' && req.method === 'GET') {
-        const tmpPath = path.join('/tmp', 'data.json');
-        const targetFile = fs.existsSync(tmpPath) ? tmpPath : DATA_FILE;
-        fs.readFile(targetFile, 'utf8', (err, data) => {
-            if (err) {
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Faylni o`qishda xatolik yuz berdi' }));
+        (async () => {
+            const kvData = await getKvData();
+            if (kvData) {
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify(kvData));
                 return;
             }
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(data);
-        });
+
+            const tmpPath = path.join(os.tmpdir(), 'data.json');
+            const targetFile = fs.existsSync(tmpPath) ? tmpPath : DATA_FILE;
+            fs.readFile(targetFile, 'utf8', (err, data) => {
+                if (err) {
+                    res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: 'Faylni o`qishda xatolik yuz berdi' }));
+                    return;
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(data);
+            });
+        })();
         return;
     }
 
@@ -43,9 +95,8 @@ const server = http.createServer((req, res) => {
         let body = '';
         req.on('data', chunk => {
             body += chunk.toString();
-            // Limit to 1MB
             if (body.length > 1e6) {
-                res.writeHead(413, { 'Content-Type': 'application/json' });
+                res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ error: 'Request body too large' }));
                 req.destroy();
             }
@@ -55,14 +106,14 @@ const server = http.createServer((req, res) => {
                 const { password } = JSON.parse(body);
                 const expectedPassword = process.env.ADMIN_PASSWORD || 'qaxxarov.98';
                 if (password === expectedPassword) {
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
                     res.end(JSON.stringify({ success: true }));
                 } else {
-                    res.writeHead(401, { 'Content-Type': 'application/json' });
+                    res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
                     res.end(JSON.stringify({ error: 'Parol noto\'g\'ri' }));
                 }
             } catch (e) {
-                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ error: 'Yaroqsiz so\'rov' }));
             }
         });
@@ -74,7 +125,7 @@ const server = http.createServer((req, res) => {
         const authHeader = req.headers['authorization'];
         const expectedPassword = process.env.ADMIN_PASSWORD || 'qaxxarov.98';
         if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== expectedPassword) {
-            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify({ error: 'Ruxsat berilmadi: Parol noto\'g\'ri' }));
             return;
         }
@@ -82,35 +133,31 @@ const server = http.createServer((req, res) => {
         let body = '';
         req.on('data', chunk => {
             body += chunk.toString();
-            // Limit to 1MB
             if (body.length > 1e6) {
-                res.writeHead(413, { 'Content-Type': 'application/json' });
+                res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ error: 'Request body too large' }));
                 req.destroy();
             }
         });
-        req.on('end', () => {
+        req.on('end', async () => {
             try {
-                JSON.parse(body); 
-                fs.writeFile(DATA_FILE, body, 'utf8', (err) => {
-                    if (err) {
-                        try {
-                            const tmpPath = path.join('/tmp', 'data.json');
-                            fs.writeFileSync(tmpPath, body, 'utf8');
-                            res.writeHead(200, { 'Content-Type': 'application/json' });
-                            res.end(JSON.stringify({ success: true }));
-                            return;
-                        } catch (tmpErr) {
-                            res.writeHead(500, { 'Content-Type': 'application/json' });
-                            res.end(JSON.stringify({ error: 'Saqlashda xatolik yuz berdi: ' + tmpErr.message }));
-                            return;
-                        }
+                const parsed = JSON.parse(body); 
+                await setKvData(parsed);
+
+                try {
+                    fs.writeFileSync(DATA_FILE, body, 'utf8');
+                } catch (err) {
+                    try {
+                        const tmpPath = path.join(os.tmpdir(), 'data.json');
+                        fs.writeFileSync(tmpPath, body, 'utf8');
+                    } catch (tmpErr) {
+                        console.error('File backup write failed:', tmpErr);
                     }
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ success: true }));
-                });
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ success: true }));
             } catch (e) {
-                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ error: 'Yaroqsiz ma`lumot formati' }));
             }
         });
@@ -123,36 +170,51 @@ const server = http.createServer((req, res) => {
         req.on('data', chunk => {
             body += chunk.toString();
             if (body.length > 1e6) {
-                res.writeHead(413, { 'Content-Type': 'application/json' });
+                res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ error: 'Request body too large' }));
                 req.destroy();
             }
         });
-        req.on('end', () => {
+        req.on('end', async () => {
             try {
                 const { workId, emoji } = JSON.parse(body);
                 if (!workId || !emoji) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
                     res.end(JSON.stringify({ error: 'workId and emoji are required' }));
                     return;
                 }
-                const fileContent = fs.readFileSync(DATA_FILE, 'utf8');
-                const data = JSON.parse(fileContent);
-                const work = data.works.find(w => w.id === workId);
+
+                let data = await getKvData();
+                if (!data) {
+                    const tmpPath = path.join(os.tmpdir(), 'data.json');
+                    const targetFile = fs.existsSync(tmpPath) ? tmpPath : DATA_FILE;
+                    const fileContent = fs.readFileSync(targetFile, 'utf8');
+                    data = JSON.parse(fileContent);
+                }
+
+                const work = (data.works || []).find(w => w.id === workId);
                 if (!work) {
-                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
                     res.end(JSON.stringify({ error: 'Work not found' }));
                     return;
                 }
-                if (!work.reactions) {
-                    work.reactions = {};
-                }
+                if (!work.reactions) work.reactions = {};
                 work.reactions[emoji] = (work.reactions[emoji] || 0) + 1;
-                fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
-                res.writeHead(200, { 'Content-Type': 'application/json' });
+
+                await setKvData(data);
+                try {
+                    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+                } catch (e) {
+                    try {
+                        const tmpPath = path.join(os.tmpdir(), 'data.json');
+                        fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf8');
+                    } catch (err) {}
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ success: true, reactions: work.reactions }));
             } catch (e) {
-                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ error: 'Yaroqsiz so\'rov' }));
             }
         });
@@ -165,54 +227,66 @@ const server = http.createServer((req, res) => {
         req.on('data', chunk => {
             body += chunk.toString();
             if (body.length > 1e6) {
-                res.writeHead(413, { 'Content-Type': 'application/json' });
+                res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ error: 'Request body too large' }));
                 req.destroy();
             }
         });
-        req.on('end', () => {
+        req.on('end', async () => {
             try {
                 const { workId, name, text } = JSON.parse(body);
                 if (!workId || !text) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
                     res.end(JSON.stringify({ error: 'workId and text are required' }));
                     return;
                 }
                 const commentName = name || 'Anonim';
-                const fileContent = fs.readFileSync(DATA_FILE, 'utf8');
-                const data = JSON.parse(fileContent);
-                const work = data.works.find(w => w.id === workId);
+                let data = await getKvData();
+                if (!data) {
+                    const tmpPath = path.join(os.tmpdir(), 'data.json');
+                    const targetFile = fs.existsSync(tmpPath) ? tmpPath : DATA_FILE;
+                    const fileContent = fs.readFileSync(targetFile, 'utf8');
+                    data = JSON.parse(fileContent);
+                }
+
+                const work = (data.works || []).find(w => w.id === workId);
                 if (!work) {
-                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
                     res.end(JSON.stringify({ error: 'Work not found' }));
                     return;
                 }
-                if (!work.comments) {
-                    work.comments = [];
-                }
+                if (!work.comments) work.comments = [];
                 work.comments.push({ name: commentName, text, date: new Date().toISOString() });
-                fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
-                res.writeHead(200, { 'Content-Type': 'application/json' });
+
+                await setKvData(data);
+                try {
+                    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+                } catch (e) {
+                    try {
+                        const tmpPath = path.join(os.tmpdir(), 'data.json');
+                        fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf8');
+                    } catch (err) {}
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ success: true, comments: work.comments }));
             } catch (e) {
-                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ error: 'Yaroqsiz so\'rov' }));
             }
         });
         return;
     }
 
-    // API endpoint to upload files (Proxy to Catbox/tmpfiles)
+    // API endpoint to upload files (Permanent Catbox proxy)
     if (req.url === '/api/upload' && req.method === 'POST') {
         let chunks = [];
-        req.on('data', chunk => {
-            chunks.push(chunk);
-        });
+        req.on('data', chunk => chunks.push(chunk));
         req.on('end', async () => {
             try {
                 const buffer = Buffer.concat(chunks);
                 if (!buffer || buffer.length === 0) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
                     res.end(JSON.stringify({ error: 'Fayl bo`sh' }));
                     return;
                 }
@@ -220,50 +294,65 @@ const server = http.createServer((req, res) => {
                 const fileName = req.headers['x-file-name'] ? decodeURIComponent(req.headers['x-file-name']) : 'upload.png';
                 const fileType = req.headers['x-file-type'] || 'application/octet-stream';
 
-                // 1. Catbox server-side upload
+                // 1. Try Catbox raw multipart upload with browser headers
                 try {
-                    const formData = new FormData();
-                    formData.append('reqtype', 'fileupload');
-                    formData.append('fileToUpload', new Blob([buffer], { type: fileType }), fileName);
+                    const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+                    let bodyStr = `--${boundary}\r\nContent-Disposition: form-data; name="reqtype"\r\n\r\nfileupload\r\n--${boundary}\r\nContent-Disposition: form-data; name="fileToUpload"; filename="${fileName}"\r\nContent-Type: ${fileType}\r\n\r\n`;
+                    const headerBuf = Buffer.from(bodyStr, 'utf-8');
+                    const footerBuf = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8');
+                    const totalBuf = Buffer.concat([headerBuf, buffer, footerBuf]);
 
                     const catRes = await fetch('https://catbox.moe/user/api.php', {
                         method: 'POST',
-                        body: formData
+                        headers: {
+                            'Content-Type': `multipart/form-data; boundary=${boundary}`,
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                            'Accept': '*/*',
+                            'Origin': 'https://catbox.moe',
+                            'Referer': 'https://catbox.moe/'
+                        },
+                        body: totalBuf
                     });
                     const fileUrl = (await catRes.text()).trim();
                     if (fileUrl.startsWith('http')) {
-                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
                         res.end(JSON.stringify({ success: true, url: fileUrl }));
                         return;
                     }
-                } catch (e) {
-                    console.error('Catbox upload error:', e);
+                } catch (catErr) {
+                    console.error('Catbox upload error:', catErr);
                 }
 
                 // 2. Fallback to tmpfiles
                 try {
-                    const formData = new FormData();
-                    formData.append('file', new Blob([buffer], { type: fileType }), fileName);
+                    const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+                    let bodyStr = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${fileType}\r\n\r\n`;
+                    const headerBuf = Buffer.from(bodyStr, 'utf-8');
+                    const footerBuf = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8');
+                    const totalBuf = Buffer.concat([headerBuf, buffer, footerBuf]);
 
                     const tmpRes = await fetch('https://tmpfiles.org/api/v1/upload', {
                         method: 'POST',
-                        body: formData
+                        headers: {
+                            'Content-Type': `multipart/form-data; boundary=${boundary}`
+                        },
+                        body: totalBuf
                     });
                     const json = await tmpRes.json();
                     if (json.status === 'success' && json.data && json.data.url) {
                         const directUrl = json.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
                         res.end(JSON.stringify({ success: true, url: directUrl }));
                         return;
                     }
-                } catch (e) {
-                    console.error('Tmpfiles upload error:', e);
+                } catch (tmpErr) {
+                    console.error('Tmpfiles upload error:', tmpErr);
                 }
 
-                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ error: 'Faylni yuklab bo`lmadi' }));
             } catch (err) {
-                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ error: err.message }));
             }
         });
@@ -272,11 +361,10 @@ const server = http.createServer((req, res) => {
 
     // Serve Static Files
     let safeUrl = req.url === '/' ? '/index.html' : req.url;
-    safeUrl = safeUrl.split('?')[0]; // Remove query params
+    safeUrl = safeUrl.split('?')[0];
 
     const filePath = path.resolve(path.join(__dirname, safeUrl));
     
-    // Path Traversal check: verify requested file is within project directory
     if (!filePath.startsWith(__dirname)) {
         res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('Ruxsat berilmadi');
@@ -285,14 +373,20 @@ const server = http.createServer((req, res) => {
 
     const extname = String(path.extname(filePath)).toLowerCase();
     const mimeTypes = {
-        '.html': 'text/html',
-        '.js': 'text/javascript',
-        '.css': 'text/css',
-        '.json': 'application/json',
+        '.html': 'text/html; charset=utf-8',
+        '.js': 'text/javascript; charset=utf-8',
+        '.css': 'text/css; charset=utf-8',
+        '.json': 'application/json; charset=utf-8',
         '.png': 'image/png',
         '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
         '.gif': 'image/gif',
-        '.svg': 'image/svg+xml'
+        '.svg': 'image/svg+xml',
+        '.webp': 'image/webp',
+        '.ico': 'image/x-icon',
+        '.mp4': 'video/mp4',
+        '.mov': 'video/quicktime',
+        '.webm': 'video/webm'
     };
 
     const contentType = mimeTypes[extname] || 'application/octet-stream';
@@ -308,7 +402,7 @@ const server = http.createServer((req, res) => {
             }
         } else {
             res.writeHead(200, { 'Content-Type': contentType });
-            res.end(content, 'utf-8');
+            res.end(content);
         }
     });
 });
@@ -317,3 +411,4 @@ server.listen(PORT, () => {
     console.log(`Server ishga tushdi! Brauzerda oching: http://localhost:${PORT}`);
     console.log(`Admin panel: http://localhost:${PORT}/admin.html`);
 });
+

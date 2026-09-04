@@ -1517,102 +1517,126 @@
             // Comments section
             const comments = work.comments || [];
             let commentsListHtml = '';
-            if (comments.length) {
-                commentsListHtml = comments.map(c => {
-                    const initials = (c.name || 'A').substring(0, 1).toUpperCase();
-                    const date = c.date ? new Date(c.date).toLocaleDateString('uz-UZ', {day:'numeric',month:'short'}) : '';
-                    return `<div class="comment-item">
-                        <div class="comment-avatar">${initials}</div>
-                        <div class="comment-body">
-                            <strong>${c.name || 'Anonim'}</strong><small>${date}</small>
-                            <p>${c.text}</p>
-                        </div>
-                    </div>`;
-                }).join('');
-            } else {
-                commentsListHtml = '<div class="no-comments">Hali izohlar yo\'q. Birinchi bo\'ling!</div>';
-            }
-
-            detail.innerHTML += `<div class="lightbox-comments" id="commentsScroll">${commentsListHtml}</div>`;
-            detail.innerHTML += `<div class="comment-form">
-                <input type="text" id="commentName" placeholder="Ismingiz" style="max-width:120px;">
-                <input type="text" id="commentText" placeholder="Izoh yozing..." onkeydown="if(event.key==='Enter')sendComment('${workId}')">
-                <button onclick="sendComment('${workId}')"><i class="fa-solid fa-paper-plane"></i></button>
-            </div>`;
-
-            content.appendChild(detail);
-            lb.classList.add('active');
-
-            // Scroll to bottom of comments + restore saved name
-            setTimeout(() => {
-                const cs = document.getElementById('commentsScroll');
-                if (cs) cs.scrollTop = cs.scrollHeight;
-                const savedName = localStorage.getItem('commentName');
-                const nameInput = document.getElementById('commentName');
-                if (savedName && nameInput) nameInput.value = savedName;
-            }, 100);
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
-        // Send Reaction
-        async function sendReaction(workId, emoji, btnEl) {
-            // Optimistic UI update
-            const countEl = btnEl.querySelector('.emoji-count');
-            const currentCount = parseInt(countEl.textContent) || 0;
-            const myReactions = JSON.parse(localStorage.getItem('myReactions_' + workId) || '[]');
-            
-            if (myReactions.includes(emoji)) return; // Already reacted
-            
-            countEl.textContent = currentCount + 1;
-            btnEl.classList.add('reacted');
-            myReactions.push(emoji);
-            localStorage.setItem('myReactions_' + workId, JSON.stringify(myReactions));
-
-            // Also update local cache
-            const work = (galleryWorksCache || []).find(w => w.id === workId);
-            if (work) {
-                if (!work.reactions) work.reactions = {};
-                work.reactions[emoji] = (work.reactions[emoji] || 0) + 1;
+        // Mouse neon spotlight effect for cards
+        document.addEventListener('mousemove', (e) => {
+            const card = e.target.closest('.gallery-item, .link-card, .stat-card, .about-card');
+            if (card) {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
             }
+        });
 
-            try {
-                await fetch(`${apiBase}/api/react`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ workId, emoji })
-                });
-            } catch (e) {
-                console.error('Reaction error:', e);
-            }
+        if (comments.length) {
+            commentsListHtml = comments.map(c => {
+                const initials = escapeHtml((c.name || 'A').substring(0, 1).toUpperCase());
+                const date = c.date ? new Date(c.date).toLocaleDateString('uz-UZ', {day:'numeric',month:'short'}) : '';
+                return `<div class="comment-item">
+                    <div class="comment-avatar">${initials}</div>
+                    <div class="comment-body">
+                        <strong>${escapeHtml(c.name || 'Anonim')}</strong><small>${date}</small>
+                        <p>${escapeHtml(c.text)}</p>
+                    </div>
+                </div>`;
+            }).join('');
+        } else {
+            commentsListHtml = '<div class="no-comments">Hali izohlar yo\'q. Birinchi bo\'ling!</div>';
         }
 
-        // Send Comment
-        async function sendComment(workId) {
+        detail.innerHTML += `<div class="lightbox-comments" id="commentsScroll">${commentsListHtml}</div>`;
+        detail.innerHTML += `<div class="comment-form">
+            <input type="text" id="commentName" placeholder="Ismingiz" style="max-width:120px;">
+            <input type="text" id="commentText" placeholder="Izoh yozing..." onkeydown="if(event.key==='Enter')sendComment('${workId}')">
+            <button onclick="sendComment('${workId}')"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>`;
+
+        content.appendChild(detail);
+        lb.classList.add('active');
+
+        // Scroll to bottom of comments + restore saved name
+        setTimeout(() => {
+            const cs = document.getElementById('commentsScroll');
+            if (cs) cs.scrollTop = cs.scrollHeight;
+            const savedName = localStorage.getItem('commentName');
             const nameInput = document.getElementById('commentName');
-            const textInput = document.getElementById('commentText');
-            const name = nameInput.value.trim() || 'Anonim';
-            const text = textInput.value.trim();
+            if (savedName && nameInput) nameInput.value = savedName;
+        }, 100);
+    }
 
-            if (!text) return;
+    // Send Reaction
+    async function sendReaction(workId, emoji, btnEl) {
+        // Optimistic UI update
+        const countEl = btnEl.querySelector('.emoji-count');
+        const currentCount = parseInt(countEl.textContent) || 0;
+        const myReactions = JSON.parse(localStorage.getItem('myReactions_' + workId) || '[]');
+        
+        if (myReactions.includes(emoji)) return; // Already reacted
+        
+        countEl.textContent = currentCount + 1;
+        btnEl.classList.add('reacted');
+        myReactions.push(emoji);
+        localStorage.setItem('myReactions_' + workId, JSON.stringify(myReactions));
 
-            // Save name for future
-            localStorage.setItem('commentName', name);
+        // Also update local cache
+        const work = (galleryWorksCache || []).find(w => w.id === workId);
+        if (work) {
+            if (!work.reactions) work.reactions = {};
+            work.reactions[emoji] = (work.reactions[emoji] || 0) + 1;
+        }
 
-            const newComment = { name, text, date: new Date().toISOString() };
+        try {
+            await fetch(`${apiBase}/api/react`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workId, emoji })
+            });
+        } catch (e) {
+            console.error('Reaction error:', e);
+        }
+    }
 
-            // Optimistic UI
-            const scroll = document.getElementById('commentsScroll');
-            const noComments = scroll.querySelector('.no-comments');
-            if (noComments) noComments.remove();
+    // Send Comment
+    async function sendComment(workId) {
+        const nameInput = document.getElementById('commentName');
+        const textInput = document.getElementById('commentText');
+        const name = nameInput.value.trim() || 'Anonim';
+        const text = textInput.value.trim();
 
-            const initials = name.substring(0, 1).toUpperCase();
-            const dateStr = new Date().toLocaleDateString('uz-UZ', {day:'numeric',month:'short'});
-            scroll.innerHTML += `<div class="comment-item">
-                <div class="comment-avatar">${initials}</div>
-                <div class="comment-body">
-                    <strong>${name}</strong><small>${dateStr}</small>
-                    <p>${text}</p>
-                </div>
-            </div>`;
+        if (!text) return;
+
+        // Save name for future
+        localStorage.setItem('commentName', name);
+
+        const newComment = { name, text, date: new Date().toISOString() };
+
+        // Optimistic UI
+        const scroll = document.getElementById('commentsScroll');
+        const noComments = scroll.querySelector('.no-comments');
+        if (noComments) noComments.remove();
+
+        const initials = escapeHtml(name.substring(0, 1).toUpperCase());
+        const dateStr = new Date().toLocaleDateString('uz-UZ', {day:'numeric',month:'short'});
+        scroll.innerHTML += `<div class="comment-item">
+            <div class="comment-avatar">${initials}</div>
+            <div class="comment-body">
+                <strong>${escapeHtml(name)}</strong><small>${dateStr}</small>
+                <p>${escapeHtml(text)}</p>
+            </div>
+        </div>`;
+        scroll.scrollTop = scroll.scrollHeight;
+        textInput.value = '';
             scroll.scrollTop = scroll.scrollHeight;
             textInput.value = '';
 

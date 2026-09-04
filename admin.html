@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Portfolio</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
             --dark: #080e1a;
@@ -567,6 +568,16 @@
             xhr.send(file);
         }
 
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         function renderWorksList() {
             const list = document.getElementById('worksList');
             if (!currentWorks.length) {
@@ -576,17 +587,17 @@
             list.innerHTML = currentWorks.map((w, i) => {
                 let preview = '';
                 if (w.cover) {
-                    preview = `<img src="${w.cover}" alt="${w.title}">`;
+                    preview = `<img src="${w.cover}" alt="${escapeHtml(w.title)}">`;
                 } else if (w.type === 'video') {
-                    preview = `<img src="/video_cover.png" alt="${w.title}">`;
+                    preview = `<img src="/video_cover.png" alt="${escapeHtml(w.title)}">`;
                 } else {
-                    preview = `<img src="${w.url}" alt="${w.title}">`;
+                    preview = `<img src="${w.url}" alt="${escapeHtml(w.title)}">`;
                 }
                 const catLabels = { 'graphic': 'Grafik', 'ai-image': 'AI Rasm', 'video': 'Video' };
                 return `<div class="work-item">
                     ${preview}
                     <div class="work-info">
-                        <strong>${w.title || 'Nomsiz'}</strong>
+                        <strong>${escapeHtml(w.title || 'Nomsiz')}</strong>
                         <small>${catLabels[w.category] || w.category}</small>
                     </div>
                     <button class="btn-del" onclick="removeWork(${i})" title="O'chirish"><i class="fa-solid fa-trash"></i></button>
